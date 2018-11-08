@@ -37,13 +37,13 @@ check_deps()
 {
 	local path app url
 
-	for app in dssim convert butteraugli; do {
+	for app in dssim convert identify butteraugli; do {
 		if path="$( command -v "$app" )"; then
 			log "[OK] $app: using '$path'"
 		else
 			case "$app" in
-				dssim)       url="https://github.com/kornelski/dssim" ;;
-				convert)     url="https://github.com/ImageMagick/ImageMagick" ;;
+				dssim) url="https://github.com/kornelski/dssim" ;;
+				convert|identify) url="https://github.com/ImageMagick/ImageMagick" ;;
 				butteraugli) url="https://github.com/google/butteraugli" ;;
 			esac
 
@@ -65,8 +65,8 @@ image_into_8x8tiles()
 	# is really fast, counter starts with 000
 	convert "$file" -crop 8x8 parts-%03d.png
 
-	log "[OK] file: '$file' - $( ls -1 'parts-'* | wc -l ) tiles 8x8 produced"
-	cd - >/dev/null
+	log "[OK] file: '$file' - $( find . -iname 'parts-*' | wc -l ) tiles 8x8 produced"
+	cd - >/dev/null || return 1
 }
 
 characterset_into_tiles()
@@ -97,13 +97,14 @@ png2petscii()
 	{
 		local file1="$1"
 		local file2="$2"
-		local out butter
+		local out
 
+#		local butter
 #		# e.g. 74.168419
 #		butter="$( butteraugli "$file1" "$file2" )"
 #		[ "$butter" = '0.000000' ] || log "butter: $butter"
 
-		explode $( $DSSIM_BIN "$file1" "$file2" )
+		explode $( dssim "$file1" "$file2" )
 
 		out="$1"			# e.g. 20.497861
 		export SCORE_PLAIN="$out"	#     = 20497861
@@ -130,7 +131,7 @@ png2petscii()
 		BEST=999999999
 		for FRAME_PET in chars2/parts-*; do {
 			compare_pix "$FRAME" "$FRAME_PET"	# sets var $SCORE
-			test $SCORE -lt $BEST && {
+			test "$SCORE" -lt "$BEST" && {
 				BEST=$SCORE
 				BEST_PLAIN=$SCORE_PLAIN
 				BEST_FILE="$FRAME_PET"
@@ -145,7 +146,7 @@ png2petscii()
 		F=$(( F + 1 ))
 
 		GOOD=bad
-		test $BEST -le 999999 && GOOD='+++'
+		test "$BEST" -le 999999 && GOOD='+++'
 		cp "$BEST_FILE" "$FILE_OUT"
 		log "X:$X Y:$Y BEST: $BEST/$BEST_PLAIN - $GOOD = $BEST_FILE - $FILE_OUT IN: $FRAME"
 	} done
@@ -172,9 +173,9 @@ image2monochrome320x200()
 	get_image_resolution "$workfile"
 	log "[OK] converting '$workfile' with ${WIDTH}x${HEIGTH} to 320x200 monochrome"
 	convert "$workfile" -resize "320x200!" -monochrome "$FILE_IN" || return 1
-	log "[OK] converted '$file' to '$DIR_IN/$FILE_IN'"
+	log "[OK] converted '$file' to '$DIR_IN/$file'"
 
-	cd - >/dev/null
+	cd - >/dev/null || return 1
 }
 
 [ "$ARG1" = 'clean' ] && {
@@ -190,8 +191,6 @@ check_deps || exit 1
 image_into_8x8tiles "$DIR_IN" "$FILE_IN" || exit 1
 image2monochrome320x200 "$FILE_IN_ORIGINAL" || exit 1
 characterset_into_tiles || exit 1
-
-exit 1
 
 [ "$ARG1" = 'convert' ] && {
 	image2monochrome320x200 "$FILE_IN_ORIGINAL"
