@@ -63,7 +63,7 @@ image_into_8x8tiles()
 	log "[OK] file: '$file' - will crop into 8x8 tiles in '$dir'"
 
 	# is really fast, counter starts with 000
-	convert "$file" -crop 8x8 parts-%03d.png
+	convert "$file" -crop 8x8 parts-%03d.png || return 1
 
 	log "[OK] file: '$file' - $( find . -iname 'parts-*' | wc -l ) tiles 8x8 produced"
 	cd - >/dev/null || return 1
@@ -72,12 +72,13 @@ image_into_8x8tiles()
 characterset_into_tiles()
 {
 	[ -f "$PETSCII_CHARACTERFILE" ] || {
-		log "[ERROR] missing PETSCII characterfile"
+		log "[ERROR] missing PETSCII characterfile: '$PETSCII_CHARACTERFILE'"
 		return 1
 	}
 
 	mkdir -p "$PETSCII_DIR"
 	convert "$PETSCII_CHARACTERFILE" "$PETSCII_DIR/chars.png" || return 1
+	ls -l "$PETSCII_DIR/chars.png" || exit 1
 	image_into_8x8tiles "$PETSCII_DIR" "chars.png" || return 1
 }
 
@@ -121,7 +122,7 @@ png2petscii()
 	F=0
 	X=0
 	Y=1
-	for FRAME in $DIR_IN/parts-*; do {
+	for FRAME in "$DIR_IN/parts-"*; do {
 		X=$(( X + 1 ))
 		test $X -gt 40 && {
 			X=1
@@ -129,18 +130,21 @@ png2petscii()
 		}
 
 		BEST=999999999
-		for FRAME_PET in chars2/parts-*; do {
+		for FRAME_PET in "$PETSCII_DIR/parts-"*; do {
 			compare_pix "$FRAME" "$FRAME_PET"	# sets var $SCORE
 			test "$SCORE" -lt "$BEST" && {
 				BEST=$SCORE
 				BEST_PLAIN=$SCORE_PLAIN
 				BEST_FILE="$FRAME_PET"
-				log "new BEST: $BEST/$BEST_PLAIN"
+
+				SOLUTION_DIR="$DIR_IN/solutions/$X/$Y"
+				mkdir -p "$SOLUTION_DIR/$BEST_PLAIN"
+				cp "$BEST_FILE" "$SOLUTION_DIR/$BEST_PLAIN/"
+				cp "$FRAME" "$SOLUTION_DIR/original.png"
+
+				log "new BEST: $BEST/$BEST_PLAIN - see: $SOLUTION_DIR"
 			}
 		} done
-
-		# fake it and take the original:
-		# BEST_FILE="$FRAME"
 
 		FILE_OUT="$DIR_OUT/parts-$( printf '%03i' "$F" ).png"
 		F=$(( F + 1 ))
@@ -148,7 +152,7 @@ png2petscii()
 		GOOD=bad
 		test "$BEST" -le 999999 && GOOD='+++'
 		cp "$BEST_FILE" "$FILE_OUT"
-		log "X:$X Y:$Y BEST: $BEST/$BEST_PLAIN - $GOOD = $BEST_FILE - $FILE_OUT IN: $FRAME"
+		log "$BEST_PLAIN -> $BEST = $GOOD X:$X Y:$Y = $BEST_FILE - $FILE_OUT IN: $FRAME"
 	} done
 
 }
@@ -160,6 +164,7 @@ image2monochrome320x200()
 
 	if [ -e "$file" ]; then
 		extension="$( echo "$file" | cut -d'.' -f2 )"
+		mkdir -p "$DIR_IN"
 		cp "$file" "$DIR_IN/original.$extension" || return 1
 		workfile="original.$extension"
 	else
@@ -178,22 +183,27 @@ image2monochrome320x200()
 	cd - >/dev/null || return 1
 }
 
-[ "$ARG1" = 'clean' ] && {
+cleanup()
+{
 	for OBJ in "$DIR_IN" "$DIR_OUT" "$PETSCII_DIR" "$LOG"; do {
 		log "[OK] removing '$OBJ'"
 		[ -e "$OBJ" ] && rm -fR "$OBJ"
 	} done
+}
+
+[ "$ARG1" = 'clean' ] && {
+	cleanup
 	
 	exit 0
 }
 
 check_deps || exit 1
-image_into_8x8tiles "$DIR_IN" "$FILE_IN" || exit 1
-image2monochrome320x200 "$FILE_IN_ORIGINAL" || exit 1
-characterset_into_tiles || exit 1
 
 [ "$ARG1" = 'convert' ] && {
+	cleanup
 	image2monochrome320x200 "$FILE_IN_ORIGINAL"
+	image_into_8x8tiles "$DIR_IN" "$FILE_IN" || exit 1
+	characterset_into_tiles || exit 1
 	png2petscii
 }
 
