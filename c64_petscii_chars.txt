@@ -1,0 +1,8 @@
+=== Commodore C64 default character set / PETSCII ===
+
+these are 2 files shamelessly stolen from
+http://kofler.dot.at/c64/
+
+lowercase: 32 x 4 chars = 128 and the some inverted
+uppercase: the same
+
