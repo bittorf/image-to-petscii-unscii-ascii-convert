@@ -24,7 +24,9 @@ DIR_OUT='outputgfx'
 
 PETSCII_DIR='c64_petscii_chars'
 PETSCII_CHARACTERFILE="$ARG3"
+CACHE="$TMPDIR/cachefile"
 
+STRIP_METADATA='-define png:include-chunk=none'
 alias explode='set -f;set +f --'
 
 log()
@@ -63,7 +65,7 @@ image_into_8x8tiles()
 	log "[OK] file: '$file' - will crop into 8x8 tiles in '$dir'"
 
 	# is really fast, counter starts with 000
-	convert "$file" -crop 8x8 parts-%03d.png || return 1
+	convert $STRIP_METADATA "$file" -crop 8x8 parts-%03d.png || return 1
 
 	log "[OK] file: '$file' - $( find . -iname 'parts-*' | wc -l ) tiles 8x8 produced"
 	cd - >/dev/null || return 1
@@ -77,8 +79,7 @@ characterset_into_tiles()
 	}
 
 	mkdir -p "$PETSCII_DIR"
-	convert "$PETSCII_CHARACTERFILE" "$PETSCII_DIR/chars.png" || return 1
-	ls -l "$PETSCII_DIR/chars.png" || exit 1
+	convert $STRIP_METADATA "$PETSCII_CHARACTERFILE" "$PETSCII_DIR/chars.png" || return 1
 	image_into_8x8tiles "$PETSCII_DIR" "chars.png" || return 1
 }
 
@@ -119,6 +120,32 @@ png2petscii()
 		# 0.036651 -> 036651 -> 36651
 	}
 
+	cache_add()
+	{
+		local file="$1"
+		local score="$2"
+		local score_plain="$3"
+		local frame_pet="$4"
+		local chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
+
+		echo "$chksum $score $score_plain $frame_pet" >>"$CACHE"
+	}
+
+	pattern_cached()
+	{
+		local file="$1"
+		local chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
+		local line
+
+		line="$( grep -s "$chksum" "$CACHE" )" && {
+			set -- $line
+			export SCORE=$2
+			export SCORE_PLAIN=$3
+			export FRAME_PET=$4
+			log "[OK] cachehit: $FRAME_PET"
+		}
+	}
+
 	F=0
 	X=0
 	Y=1
@@ -131,20 +158,31 @@ png2petscii()
 
 		BEST=999999999
 		for FRAME_PET in "$PETSCII_DIR/parts-"*; do {
-			compare_pix "$FRAME" "$FRAME_PET"	# sets var $SCORE
-			test "$SCORE" -lt "$BEST" && {
+			CACHE=
+			if pattern_cached "$FRAME"; then
+				CACHE='true'
 				BEST=$SCORE
 				BEST_PLAIN=$SCORE_PLAIN
 				BEST_FILE="$FRAME_PET"
+				break
+			else
+				compare_pix "$FRAME" "$FRAME_PET"	# sets var $SCORE
+				test "$SCORE" -lt "$BEST" && {
+					BEST=$SCORE
+					BEST_PLAIN=$SCORE_PLAIN
+					BEST_FILE="$FRAME_PET"
 
-				SOLUTION_DIR="$DIR_IN/solutions/$X/$Y"
-				mkdir -p "$SOLUTION_DIR/$BEST_PLAIN"
-				cp "$BEST_FILE" "$SOLUTION_DIR/$BEST_PLAIN/"
-				cp "$FRAME" "$SOLUTION_DIR/original.png"
+					SOLUTION_DIR="$DIR_IN/solutions/$X/$Y"
+					mkdir -p "$SOLUTION_DIR/$BEST"
+					cp "$BEST_FILE" "$SOLUTION_DIR/$BEST/"
+					cp "$FRAME" "$SOLUTION_DIR/original.png"
 
-				log "new BEST: $BEST/$BEST_PLAIN - see: $SOLUTION_DIR"
-			}
+					log "new BEST: $BEST = $BEST_PLAIN - see: $SOLUTION_DIR"
+				}
+			fi
 		} done
+
+		[ "$CACHE" = 'true' ] || cache_add "$FRAME" "$BEST" "$BEST_PLAIN" "$BEST_FILE"
 
 		FILE_OUT="$DIR_OUT/parts-$( printf '%03i' "$F" ).png"
 		F=$(( F + 1 ))
@@ -177,7 +215,7 @@ image2monochrome320x200()
 
 	get_image_resolution "$workfile"
 	log "[OK] converting '$workfile' with ${WIDTH}x${HEIGTH} to 320x200 monochrome"
-	convert "$workfile" -resize "320x200!" -monochrome "$FILE_IN" || return 1
+	convert $STRIP_METADATA "$workfile" -resize "320x200!" -monochrome "$FILE_IN" || return 1
 	log "[OK] converted '$file' to '$DIR_IN/$file'"
 
 	cd - >/dev/null || return 1
@@ -226,8 +264,8 @@ for FRAME in $DIR_OUT/parts-*; do {	# append/stitch a complete x-row together
 	}
 
 #	log "X-append: $FRAME - X: $X"
-	convert  "$P1" "$FRAME" +append "$P2"		# horizontal: X+Y=XY
-	cp "$P2" "$P1"
+	convert $STRIP_METADATA "$P1" "$FRAME" +append "$P2"		# horizontal: X+Y=XY
+	cp                "$P2" "$P1"
 
 	test $X -eq $DEST_X && {
 		cp "$P1" "$TMPDIR/tile_$( printf '%03i' "$X_TILE" ).png"
@@ -240,8 +278,8 @@ for FRAME in $DIR_OUT/parts-*; do {	# append/stitch a complete x-row together
 
 log "[OK] used '$DIR_IN/$FILE_IN' as source"
 
-convert "$TMPDIR/tile_"* -append $TMPDIR/output.png		# -append = vertical
-rm      "$TMPDIR/tile_"*
+convert $STRIP_METADATA "$TMPDIR/tile_"* -append $TMPDIR/output.png		# -append = vertical
+rm                      "$TMPDIR/tile_"*
 
-log "[OK] generated PETSCII-look-alike: '$TMPDIR/tileall.png'"
+log "[OK] generated PETSCII-look-alike: '$TMPDIR/output.png'"
 log "[OK] logfile: '$LOG'"
