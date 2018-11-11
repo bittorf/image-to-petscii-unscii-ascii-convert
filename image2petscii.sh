@@ -7,6 +7,7 @@ ARG3="$3"
 [ -z "$ARG1" ] && {
 	echo "Usage: $0 <convert|start> <file1> <file2>"
 	echo "       $0 <convert> <imagefile> <c64_characterfile>"
+	echo "       $0 <convert> <videofile> <c64_characterfile>"
 	echo "       $0 <start>"
 	echo "       $0 clean"
 
@@ -21,10 +22,11 @@ DIR_IN='inputgfx'
 FILE_IN_ORIGINAL="$ARG2"
 FILE_IN='image-mono.png'		# convert gfx.jpg -resize "320x200!" -monochrome image-mono.png
 DIR_OUT='outputgfx'
+DESTINATION="$TMPDIR/output-$( date +%s ).png"
 
 PETSCII_DIR='c64_petscii_chars'
 PETSCII_CHARACTERFILE="$ARG3"
-CACHE="$TMPDIR/cachefile"
+CACHEFILE="$TMPDIR/cachefile"
 
 STRIP_METADATA='-define png:include-chunk=none'
 alias explode='set -f;set +f --'
@@ -39,7 +41,7 @@ check_deps()
 {
 	local path app url
 
-	for app in dssim convert identify butteraugli; do {
+	for app in dssim convert identify butteraugli ffmpeg; do {
 		if path="$( command -v "$app" )"; then
 			log "[OK] $app: using '$path'"
 		else
@@ -47,6 +49,7 @@ check_deps()
 				dssim) url="https://github.com/kornelski/dssim" ;;
 				convert|identify) url="https://github.com/ImageMagick/ImageMagick" ;;
 				butteraugli) url="https://github.com/google/butteraugli" ;;
+				ffmpeg) url='https://johnvansickle.com/ffmpeg' ;;
 			esac
 
 			log "[ERROR] $app: missing - please adjust your path - see: '$url'"
@@ -113,7 +116,8 @@ png2petscii()
 		out="${out%.*}${out#*.}"
 		out="$( printf '%s' "$out" | sed 's/^0*//' )"
 
-		export SCORE="${out:-999999999}"
+		export SCORE="${out:-0}"
+
 		# smaller = better
 		# 0.000000 -> 000000 -> 0
 		# 0.756651 -> 756651
@@ -128,7 +132,7 @@ png2petscii()
 		local frame_pet="$4"
 		local chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
 
-		echo "$chksum $score $score_plain $frame_pet" >>"$CACHE"
+		echo "$chksum $score $score_plain $frame_pet" >>"$CACHEFILE"
 	}
 
 	pattern_cached()
@@ -137,7 +141,7 @@ png2petscii()
 		local chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
 		local line
 
-		line="$( grep -s "$chksum" "$CACHE" )" && {
+		line="$( grep -s "$chksum" "$CACHEFILE" )" && {
 			set -- $line
 			export SCORE=$2
 			export SCORE_PLAIN=$3
@@ -159,11 +163,18 @@ png2petscii()
 		BEST=999999999
 		for FRAME_PET in "$PETSCII_DIR/parts-"*; do {
 			CACHE=
+			SOLUTION_DIR="$DIR_IN/solutions/$X/$Y"
+
 			if pattern_cached "$FRAME"; then
 				CACHE='true'
 				BEST=$SCORE
 				BEST_PLAIN=$SCORE_PLAIN
 				BEST_FILE="$FRAME_PET"
+
+				mkdir -p "$SOLUTION_DIR/$BEST"
+				cp "$BEST_FILE" "$SOLUTION_DIR/$BEST/"
+				cp "$FRAME" "$SOLUTION_DIR/original.png"
+
 				break
 			else
 				compare_pix "$FRAME" "$FRAME_PET"	# sets var $SCORE
@@ -172,7 +183,6 @@ png2petscii()
 					BEST_PLAIN=$SCORE_PLAIN
 					BEST_FILE="$FRAME_PET"
 
-					SOLUTION_DIR="$DIR_IN/solutions/$X/$Y"
 					mkdir -p "$SOLUTION_DIR/$BEST"
 					cp "$BEST_FILE" "$SOLUTION_DIR/$BEST/"
 					cp "$FRAME" "$SOLUTION_DIR/original.png"
@@ -203,6 +213,7 @@ image2monochrome320x200()
 	if [ -e "$file" ]; then
 		extension="$( echo "$file" | cut -d'.' -f2 )"
 		mkdir -p "$DIR_IN"
+		log "[OK] copy '$file' to '$DIR_IN/original.$extension'"
 		cp "$file" "$DIR_IN/original.$extension" || return 1
 		workfile="original.$extension"
 	else
@@ -236,6 +247,20 @@ cleanup()
 }
 
 check_deps || exit 1
+
+case "$( file --mime-type -b "$ARG2" )" in
+	'video/'*)
+		ffmpeg -i "$ARG2" "video-images-%06d.png"
+		log "extracted: $( ls -1 "video-images-"* | wc -l ) images"
+
+		for FILE in "video-images-"*; do {
+			$0 "$ARG1" "$FILE" "$ARG3"
+		} done
+
+		ffmpeg -framerate 20 -pattern_type glob -i "$TMPDIR/output-*.png" -c:v libx264 -pix_fmt yuv420p out.mp4
+		exit 0
+	;;
+esac
 
 [ "$ARG1" = 'convert' ] && {
 	cleanup
@@ -278,8 +303,8 @@ for FRAME in $DIR_OUT/parts-*; do {	# append/stitch a complete x-row together
 
 log "[OK] used '$DIR_IN/$FILE_IN' as source"
 
-convert $STRIP_METADATA "$TMPDIR/tile_"* -append $TMPDIR/output.png		# -append = vertical
+convert $STRIP_METADATA "$TMPDIR/tile_"* -append "$DESTINATION"		# -append = vertical
 rm                      "$TMPDIR/tile_"*
 
-log "[OK] generated PETSCII-look-alike: '$TMPDIR/output.png'"
+log "[OK] generated PETSCII-look-alike: '$DESTINATION'"
 log "[OK] logfile: '$LOG'"
