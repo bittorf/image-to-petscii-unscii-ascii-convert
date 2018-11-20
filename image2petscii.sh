@@ -234,6 +234,8 @@ image2monochrome320x200()
 
 cleanup()
 {
+	[ -f "$CACHEFILE" ] && log "[OK] keeping cachefile: $CACHEFILE"
+
 	for OBJ in "$DIR_IN" "$DIR_OUT" "$PETSCII_DIR" "$LOG"; do {
 		log "[OK] removing '$OBJ'"
 		[ -e "$OBJ" ] && rm -fR "$OBJ"
