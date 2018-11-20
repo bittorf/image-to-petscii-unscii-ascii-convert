@@ -12,6 +12,21 @@ http://kofler.dot.at/c64/
 http://www.ponomarenko.info/tid2013.htm
 https://images.guide/
 
+http://metalvotze.de/content/videomodes.php
+http://c64.superdefault.com/
+http://vectorpoem.com/playscii/howto_main.html
+https://kornel.ski/en/faircomparison
+http://www.kameli.net/marq/?page_id=2717
+https://www.raquelmeyers.com/c64-petscii/
+https://nurpax.github.io/petmate/
+
+https://www.c64-wiki.de/wiki/PETSCII
+http://pelulamu.net/unscii/
+
+https://stackoverflow.com/questions/5582778/writing-a-binary-file-in-shell-shell-awk
+
+
+
 === overview ===
 use a fixed set of chars and convert an
 animation to it. with simple compression
