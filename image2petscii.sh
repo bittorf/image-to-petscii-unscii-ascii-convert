@@ -1,11 +1,6 @@
 #!/bin/sh
 
-ARG1="$1"
-ARG2="$2"
-ARG3="$3"
-ARG4="$4"
-
-[ -z "$ARG1" ] && {
+[ -z "$1" ] && {
 	echo "Usage: $0 <convert|start> <file1> <file2>"
 	echo "       $0 convert <imagefile> <c64_characterfile>"
 	echo "       $0 convert <videofile> <c64_characterfile> <crop-coords-gimpstyle>"
@@ -15,32 +10,107 @@ ARG4="$4"
 	echo "       gimpstyle-crop-coordinates from top leftmost to bottom-right, e.g."
 	echo "       start from x=256 and y=58 with 320x200 size"
 	echo "       320x200+256+58"
+	echo
+	echo "--logfile"
+	echo "--tmpdir"
+	echo "--cachefile"
+	echo "--inputfile"
 
 	exit 1
 }
-
-TMPDIR='/home/bastian/ledebot'
-[ -d "$TMPDIR" ] || TMPDIR='/run/shm'
-
-LOG="$TMPDIR/log.txt" && >"$LOG"	# new on every run
-DIR_IN='inputgfx'
-FILE_IN_ORIGINAL="$ARG2"
-FILE_IN='image-mono.png'		# convert gfx.jpg -resize "320x200!" -monochrome image-mono.png
-DIR_OUT='outputgfx'
-DESTINATION="$TMPDIR/output-$( date +%s ).png"
-
-PETSCII_DIR='c64_petscii_chars'
-PETSCII_CHARACTERFILE="$ARG3"
-CACHEFILE="$TMPDIR/cachefile"
-
-STRIP_METADATA='-define png:include-chunk=none'
-alias explode='set -f;set +f --'
 
 log()
 {
 	logger -s -- "$0: $*"
 	echo "$0: $*" >>"$LOG"
 }
+
+uniq_id()		# monoton raising
+{
+	local up rest
+	read -r up rest <'/proc/uptime'
+	echo "${up%.*}${up#*.}"
+}
+
+### all our defaults:
+
+SCRIPTDIR="$( cd -P -- "$( dirname -- "$0" )" && pwd -P )"
+TMPDIR='/home/bastian/ledebot'
+[ -d "$TMPDIR" ] || TMPDIR='/run/shm'
+LOG="$TMPDIR/log.txt"
+
+DIR_IN="inputgfx-$( uniq_id )"				# 8x8 blocks - original (but converted to monochrome)
+DIR_OUT="outputgfx-$( uniq_id )"			# 8x8 blocks - petscii
+FILE_IN='image-mono.png'				# convert gfx.jpg -resize "320x200!" -monochrome image-mono.png
+
+DESTINATION="$TMPDIR/output-$( uniq_id ).png"		# resulting imaga
+
+PETSCII_CHARACTERFILE="$SCRIPTDIR/c64_petscii_chars_all.png"
+PETSCII_DIR='c64_petscii_chars'				# 8x8 blocks of all petscii-chars, generated from CHARACTERFILE
+
+CACHEFILE="$TMPDIR/cachefile"				# see cache_add()
+
+
+
+### parse arguments:
+
+while [ -n "$1" ]; do {
+	SWITCH="$1"
+	SWITCH_ARG1="$2"
+	shift
+
+	case "$SWITCH" in
+		'--inputfile')
+			if [ -s "$SWITCH_ARG1" ]; then
+				FILE_IN_ORIGINAL="$SWITCH_ARG1"
+				shift
+			else
+				log "can not read --inputfile '$SWITCH_ARG1'"
+				exit 1
+			fi
+		;;
+		'--cachefile')
+			if touch "$SWITCH_ARG1"; then
+				CACHEFILE="$SWITCH_ARG1"
+				shift
+			else
+				log "can not write --cachefile to '$SWITCH_ARG1'"
+				exit 1
+			fi
+		;;
+		'--logfile')
+			if touch "$SWITCH_ARG1"; then
+				LOG="$SWITCH_ARG1"
+				shift
+			else
+				log "can not write --logfile to '$SWITCH_ARG1'"
+				exit 1
+			fi
+		;;
+		'--tmpdir')
+			if [ -d "$SWITCH_ARG1" ]; then
+				TMPDIR="$SWITCH_ARG1"
+				shift
+			else
+				log "bad arg for --tmpdir - dir '$SWITCH_ARG1' not found"
+				exit 1
+			fi
+		;;
+	esac
+} done
+
+[ -f "$FILE_IN_ORIGINAL" ] || exit 1
+
+ARG1="$1"
+ARG2="$2"
+ARG3="$3"
+ARG4="$4"
+
+
+>"$LOG"		# new on every run
+
+STRIP_METADATA='-define png:include-chunk=none'
+alias explode='set -f;set +f --'
 
 check_deps()
 {
@@ -66,7 +136,7 @@ check_deps()
 image_into_8x8tiles()
 {
 	local dir="$1"
-	local file="$2"
+	local file="$2"		# results into many: parts-xxx.png
 
 	mkdir -p "$dir"
 	cd "$dir" || return 1
@@ -99,6 +169,36 @@ get_image_resolution()
 	export HEIGTH=$HEIGTH
 }
 
+cache_add()
+{
+	local file="$1"
+	local score="$2"
+	local score_plain="$3"
+	local frame_pet="$4"
+	local chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
+
+	# format:
+	# filehash score_integer score_float /path/to/result-char
+	# e31...806 729121 0.729121 c64_petscii_chars/parts-032.png
+
+	echo "$chksum $score $score_plain $frame_pet" >>"$CACHEFILE"
+}
+
+pattern_cached()
+{
+	local file="$1"
+	local chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
+	local line
+
+	line="$( grep -s "$chksum" "$CACHEFILE" )" && {
+		set -- $line
+		export SCORE=$2
+		export SCORE_PLAIN=$3
+		export FRAME_PET=$4
+		log "[OK] cachehit: $FRAME_PET"
+	}
+}
+
 png2petscii()
 {
 	mkdir -p "$DIR_OUT"
@@ -127,32 +227,6 @@ png2petscii()
 		# 0.000000 -> 000000 -> 0
 		# 0.756651 -> 756651
 		# 0.036651 -> 036651 -> 36651
-	}
-
-	cache_add()
-	{
-		local file="$1"
-		local score="$2"
-		local score_plain="$3"
-		local frame_pet="$4"
-		local chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
-
-		echo "$chksum $score $score_plain $frame_pet" >>"$CACHEFILE"
-	}
-
-	pattern_cached()
-	{
-		local file="$1"
-		local chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
-		local line
-
-		line="$( grep -s "$chksum" "$CACHEFILE" )" && {
-			set -- $line
-			export SCORE=$2
-			export SCORE_PLAIN=$3
-			export FRAME_PET=$4
-			log "[OK] cachehit: $FRAME_PET"
-		}
 	}
 
 	F=0
@@ -210,7 +284,7 @@ png2petscii()
 
 }
 
-image2monochrome320x200()
+image2monochrome320x200()		# TODO: no $FILE_IN and no $DIR_IN
 {
 	local file="$1"
 	local extension workfile
@@ -219,7 +293,9 @@ image2monochrome320x200()
 		extension="$( echo "$file" | cut -d'.' -f2 )"
 		mkdir -p "$DIR_IN"
 		log "[OK] copy '$file' to '$DIR_IN/original.$extension'"
+
 		cp "$file" "$DIR_IN/original.$extension" || return 1
+
 		workfile="original.$extension"
 	else
 		log "[ERROR] missing an input image file '$file'"
@@ -231,9 +307,10 @@ image2monochrome320x200()
 
 	get_image_resolution "$workfile"
 	log "[OK] converting '$workfile' with ${WIDTH}x${HEIGTH} to 320x200 monochrome"
-	convert $STRIP_METADATA "$workfile" -resize '320x200!' -monochrome "$FILE_IN" || return 1
-	log "[OK] converted '$file' to '$DIR_IN/$file'"
 
+	convert $STRIP_METADATA "$workfile" -resize '320x200!' -monochrome "$FILE_IN" || return 1
+
+	log "[OK] converted '$file' to '$DIR_IN/$file'"
 	cd - >/dev/null || return 1
 }
 
