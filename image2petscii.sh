@@ -158,6 +158,7 @@ image_into_8x8tiles()
 	log "[OK] file: '$file' - will crop into 8x8 tiles in '$dir'"
 
 	# is really fast, counter starts with 000
+	# shellcheck disable=SC2086
 	convert $STRIP_METADATA "$file" -crop 8x8 parts-%03d.png || return 1
 
 	log "[OK] file: '$file' - $( find . -iname 'parts-*' | wc -l ) tiles 8x8 produced"
@@ -172,6 +173,8 @@ characterset_into_tiles()
 	}
 
 	mkdir -p "$PETSCII_DIR"
+
+	# shellcheck disable=SC2086
 	convert $STRIP_METADATA "$PETSCII_CHARACTERFILE" "$PETSCII_DIR/chars.png" || return 1
 	image_into_8x8tiles "$PETSCII_DIR" "chars.png" || return 1
 }
@@ -210,7 +213,9 @@ pattern_cached()
 	chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
 
 	line="$( grep -s "$chksum" "$CACHEFILE" )" && {
+		# shellcheck disable=SC2086
 		explode $line
+
 		export SCORE=$2
 		export SCORE_PLAIN=$3
 		export FRAME_PET=$4
@@ -328,6 +333,7 @@ image2monochrome320x200()		# TODO: no $FILE_IN and no $DIR_IN
 	get_image_resolution "$workfile"
 	log "[OK] converting '$workfile' with ${WIDTH}x${HEIGTH} to 320x200 monochrome"
 
+	# shellcheck disable=SC2086
 	convert $STRIP_METADATA "$workfile" -resize '320x200!' -monochrome "$FILE_IN" || return 1
 
 	log "[OK] converted '$file' to '$DIR_IN/$file'"
@@ -367,32 +373,41 @@ check_deps || exit 1
 ### convert video into frames and call ourselfes:
 
 is_video "$FILE_IN_ORIGINAL" && {
+	# convert video into frames
 	log "convert video into frames 'video-images-xxxxxx.png' in dir $PWD"
 	ffmpeg -i "$FILE_IN_ORIGINAL" "video-images-%06d.png" || exit 1
-	log "extracted: $( ls -1 "video-images-"* | wc -l ) images"
+	log "extracted: $( find . -type f -name 'video-images-*' | wc -l ) images"
 
 	[ -n "$CROP" ] && {
+		# remove old trash
 		log "apply crop '$CROP' to every file"
 		for FILE in *".cropped.png"; do {
 			[ -e "$FILE" ] && rm "$FILE"
 		} done
 
+		# crop all images
 		for FILE in "video-images-"*; do {
 			convert "$FILE" -crop "$CROP" "$FILE.cropped.png" || exit 1
 			mv "$FILE.cropped.png" "$FILE" || exit 1
 		} done
 
+		# join all images
 		[ -e 'out.mp4' ] && rm 'out.mp4'
 		ffmpeg -framerate 20 -pattern_type glob -i "video-images-*" -c:v libx264 -pix_fmt yuv420p 'out.mp4'
 		log "[OK] please check resulting animation: '$PWD/out.mp4' and press <enter> or abort with STRG + C"
 		read -r NOP && echo "$NOP"
 	}
 
+	# call outself for each file
 	for FILE in "video-images-"*; do {
-		log "$0 --action $ACTION --inputfile '$FILE'"
-		$0 --action "$ACTION" --inputfile "$FILE" || exit 1
+		$0	--action "$ACTION" \
+			--inputfile "$FILE" \
+			--cachefile "$CACHEFILE" \
+			--logfile "$LOG" \
+			--tmpdir "$TMPDIR" || exit 1
 	} done
 
+	# join all resulting images to video
 	[ -e 'out.mp4' ] && rm 'out.mp4'
 	ffmpeg -framerate 20 -pattern_type glob -i "$TMPDIR/output-*.png" -c:v libx264 -pix_fmt yuv420p 'out.mp4'
 	log "[OK] please check resulting animation: '$PWD/out.mp4'"
@@ -408,40 +423,50 @@ is_video "$FILE_IN_ORIGINAL" && {
 	png2petscii
 }
 
-P1="$TMPDIR/pic_stitched_together.png"
-P2="$TMPDIR/pic_stitched_together2.png"
-X=0
-Y=0
-X_TILE=0
-DEST_X=320
-ROW_STARTS=true
+join_chars_into_frame()
+{
+	local p1="$TMPDIR/pic_stitched_together.png"
+	local p2="$TMPDIR/pic_stitched_together2.png"
+	local x=0
+	local y=0
+	local x_tile=0
+	local dest_x=320
+	local row_starts='true'
+	local frame file
 
-for FRAME in $DIR_OUT/parts-*; do {	# append/stitch a complete x-row together
-	X=$(( X + 8 ))			# and start again in next row. at the end
-					# we stitch together all these rows to a picture
-	[ "$ROW_STARTS" = 'true' ] && {
-		ROW_STARTS=false
-		cp -v "$FRAME" "$P1" || exit 1
-		continue
-	}
+	for frame in "$DIR_OUT/parts-"*; do {		# append/stitch a complete x-row together
+		x=$(( x + 8 ))				# and start again in next row. at the end
+							# we stitch together all these rows to a picture
+		[ "$row_starts" = 'true' ] && {
+			row_starts='false'
+			cp -v "$frame" "$p1" || return 1
+			continue
+		}
 
-	convert $STRIP_METADATA "$P1" "$FRAME" +append "$P2"		# horizontal: X+Y=XY
-	cp                "$P2" "$P1"
+		# shellcheck disable=SC2086
+		convert $STRIP_METADATA "$p1" "$frame" +append "$p2"		# horizontal: X+Y=XY
+		cp                "$p2" "$p1"
 
-	test $X -eq $DEST_X && {
-		cp "$P1" "$TMPDIR/tile_$( printf '%03i' "$X_TILE" ).png"
-		X_TILE=$(( X_TILE + 1 ))
-		Y=$(( Y + 8 ))
-		X=0; ROW_STARTS=true
-	}
-} done
+		test $x -eq $dest_x && {
+			file="$TMPDIR/tile_$( printf '%03i' "$x_tile" ).png"	# 0-999
+			cp "$p1" "$file"
+			x_tile=$(( x_tile + 1 ))
+			y=$(( y + 8 ))
+			x=0
+			row_starts='true'
+		}
+	} done
 
-log "[OK] used '$DIR_IN/$FILE_IN' as source"
+	log "[OK] used '$DIR_IN/$FILE_IN' as source"
 
-convert $STRIP_METADATA "$TMPDIR/tile_"* -append "$DESTINATION"		# -append = vertical
-rm                      "$TMPDIR/tile_"*
+	# shellcheck disable=SC2086
+	convert $STRIP_METADATA "$TMPDIR/tile_"* -append "$DESTINATION"		# -append = vertical
+	rm                      "$TMPDIR/tile_"*
 
-log "[OK] generated PETSCII-look-alike: '$DESTINATION'"
-log "[OK] logfile: '$LOG'"
+	log "[OK] generated PETSCII-look-alike: '$DESTINATION'"
+}
 
+join_chars_into_frame
+
+log "[OK] see logfile: '$LOG'"
 true
