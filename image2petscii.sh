@@ -11,6 +11,8 @@
 	echo "       start from x=256 and y=58 with 320x200 size"
 	echo "       320x200+256+58"
 	echo
+	echo "--action"
+	echo "--crop"
 	echo "--logfile"
 	echo "--tmpdir"
 	echo "--cachefile"
@@ -49,7 +51,7 @@ PETSCII_CHARACTERFILE="$SCRIPTDIR/c64_petscii_chars_all.png"
 PETSCII_DIR='c64_petscii_chars'				# 8x8 blocks of all petscii-chars, generated from CHARACTERFILE
 
 CACHEFILE="$TMPDIR/cachefile"				# see cache_add()
-
+ACTION=
 
 
 ### parse arguments:
@@ -60,6 +62,24 @@ while [ -n "$1" ]; do {
 	shift
 
 	case "$SWITCH" in
+		'--action')
+			case "$SWITCH_ARG1" in
+				convert|start|clean)
+					ACTION="$SWITCH_ARG1"
+					shift
+				;;
+				*)
+					log "invalid --action '$SWITCH_ARG1'"
+				;;
+			esac
+		;;
+		'--crop')
+			if [ -n "$SWITCH_ARG1" ]; then
+				CROP="$SWITCH_ARG1"
+			else
+				log "invalid --crop '$SWITCH_ARG1'"
+			fi
+		;;
 		'--inputfile')
 			if [ -s "$SWITCH_ARG1" ]; then
 				FILE_IN_ORIGINAL="$SWITCH_ARG1"
@@ -100,12 +120,7 @@ while [ -n "$1" ]; do {
 } done
 
 [ -f "$FILE_IN_ORIGINAL" ] || exit 1
-
-ARG1="$1"
-ARG2="$2"
-ARG3="$3"
-ARG4="$4"
-
+[ -z "$ACTION" ] && exit 1
 
 >"$LOG"		# new on every run
 
@@ -324,20 +339,17 @@ cleanup()
 	} done
 }
 
-[ "$ARG1" = 'clean' ] && {
+[ "$ACTION" = 'clean' ] && {
 	cleanup
-	
 	exit 0
 }
 
 check_deps || exit 1
-set -x
-case "$( file --mime-type -b "$ARG2" )" in
-	'video/'*|'image/gif')
-		ffmpeg -i "$ARG2" "video-images-%06d.png"
-		log "extracted: $( ls -1 "video-images-"* | wc -l ) images"
 
-		CROP="$ARG4"
+case "$( file --mime-type -b "$FILE_IN_ORIGINAL" )" in
+	'video/'*|'image/gif')
+		ffmpeg -i "$FILE_IN_ORIGINAL" "video-images-%06d.png"
+		log "extracted: $( ls -1 "video-images-"* | wc -l ) images"
 
 		rm *.cropped.png
 		for FILE in "video-images-"*; do {
@@ -349,7 +361,7 @@ case "$( file --mime-type -b "$ARG2" )" in
 		read NOP
 
 		for FILE in "video-images-"*; do {
-			$0 "$ARG1" "$FILE" "$ARG3"
+			$0 --action "$ACTION" --inputfile "$FILE"
 		} done
 
 		ffmpeg -framerate 20 -pattern_type glob -i "$TMPDIR/output-*.png" -c:v libx264 -pix_fmt yuv420p 'out.mp4'
@@ -358,7 +370,7 @@ case "$( file --mime-type -b "$ARG2" )" in
 	;;
 esac
 
-[ "$ARG1" = 'convert' ] && {
+[ "$ACTION" = 'convert' ] && {
 	cleanup
 	image2monochrome320x200 "$FILE_IN_ORIGINAL"
 	image_into_8x8tiles "$DIR_IN" "$FILE_IN" || exit 1
@@ -378,13 +390,11 @@ for FRAME in $DIR_OUT/parts-*; do {	# append/stitch a complete x-row together
 	X=$(( X + 8 ))			# and start again in next row. at the end
 					# we stitch together all these rows to a picture
 	[ "$ROW_STARTS" = 'true' ] && {
-#		log "new row"
 		ROW_STARTS=false
 		cp -v "$FRAME" "$P1" || exit 1
 		continue
 	}
 
-#	log "X-append: $FRAME - X: $X"
 	convert $STRIP_METADATA "$P1" "$FRAME" +append "$P2"		# horizontal: X+Y=XY
 	cp                "$P2" "$P1"
 
@@ -392,7 +402,6 @@ for FRAME in $DIR_OUT/parts-*; do {	# append/stitch a complete x-row together
 		cp "$P1" "$TMPDIR/tile_$( printf '%03i' "$X_TILE" ).png"
 		X_TILE=$(( X_TILE + 1 ))
 		Y=$(( Y + 8 ))
-#		log "x: $X -> 0 - Y: $Y"
 		X=0; ROW_STARTS=true
 	}
 } done
