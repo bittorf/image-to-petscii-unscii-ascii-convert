@@ -381,12 +381,12 @@ is_video "$FILE_IN_ORIGINAL" && {
 			convert "$FILE" -crop "$CROP" "$FILE.cropped.png" || exit 1
 			mv "$FILE.cropped.png" "$FILE" || exit 1
 		} done
-	}
 
-	[ -e 'out.mp4' ] && rm 'out.mp4'
-	ffmpeg -framerate 20 -pattern_type glob -i "*.cropped.png" -c:v libx264 -pix_fmt yuv420p 'out.mp4'
-	log "[OK] please check resulting animation: '$PWD/out.mp4' and press <enter>"
-	read -r NOP && echo "$NOP"
+		[ -e 'out.mp4' ] && rm 'out.mp4'
+		ffmpeg -framerate 20 -pattern_type glob -i "video-images-*" -c:v libx264 -pix_fmt yuv420p 'out.mp4'
+		log "[OK] please check resulting animation: '$PWD/out.mp4' and press <enter> or abort with STRG + C"
+		read -r NOP && echo "$NOP"
+	}
 
 	for FILE in "video-images-"*; do {
 		log "$0 --action $ACTION --inputfile '$FILE'"
