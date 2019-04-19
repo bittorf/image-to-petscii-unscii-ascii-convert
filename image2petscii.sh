@@ -3,19 +3,24 @@
 ARG1="$1"
 ARG2="$2"
 ARG3="$3"
+ARG4="$4"
 
 [ -z "$ARG1" ] && {
 	echo "Usage: $0 <convert|start> <file1> <file2>"
-	echo "       $0 <convert> <imagefile> <c64_characterfile>"
-	echo "       $0 <convert> <videofile> <c64_characterfile>"
-	echo "       $0 <start>"
+	echo "       $0 convert <imagefile> <c64_characterfile>"
+	echo "       $0 convert <videofile> <c64_characterfile> <crop-coords-gimpstyle>"
+	echo "       $0 start"
 	echo "       $0 clean"
+	echo
+	echo "       gimpstyle-crop-coordinates from top leftmost to bottom-right, e.g."
+	echo "       start from x=256 and y=58 with 320x200 size"
+	echo "       320x200+256+58"
 
 	exit 1
 }
 
 TMPDIR='/home/bastian/ledebot'
-[ -f "$TMPDIR" ] || TMPDIR='/run/shm' 
+[ -d "$TMPDIR" ] || TMPDIR='/run/shm'
 
 LOG="$TMPDIR/log.txt" && >"$LOG"	# new on every run
 DIR_IN='inputgfx'
@@ -226,7 +231,7 @@ image2monochrome320x200()
 
 	get_image_resolution "$workfile"
 	log "[OK] converting '$workfile' with ${WIDTH}x${HEIGTH} to 320x200 monochrome"
-	convert $STRIP_METADATA "$workfile" -resize "320x200!" -monochrome "$FILE_IN" || return 1
+	convert $STRIP_METADATA "$workfile" -resize '320x200!' -monochrome "$FILE_IN" || return 1
 	log "[OK] converted '$file' to '$DIR_IN/$file'"
 
 	cd - >/dev/null || return 1
@@ -249,17 +254,29 @@ cleanup()
 }
 
 check_deps || exit 1
-
+set -x
 case "$( file --mime-type -b "$ARG2" )" in
-	'video/'*)
+	'video/'*|'image/gif')
 		ffmpeg -i "$ARG2" "video-images-%06d.png"
 		log "extracted: $( ls -1 "video-images-"* | wc -l ) images"
+
+		CROP="$ARG4"
+
+		rm *.cropped.png
+		for FILE in "video-images-"*; do {
+			convert "$FILE" -crop "$CROP" "$FILE.cropped.png"
+		} done
+
+		ffmpeg -framerate 20 -pattern_type glob -i "*.cropped.png" -c:v libx264 -pix_fmt yuv420p 'out.mp4'
+		log "[OK] please check resulting animation: '$PWD/out.mp4' and press <enter>"
+		read NOP
 
 		for FILE in "video-images-"*; do {
 			$0 "$ARG1" "$FILE" "$ARG3"
 		} done
 
-		ffmpeg -framerate 20 -pattern_type glob -i "$TMPDIR/output-*.png" -c:v libx264 -pix_fmt yuv420p out.mp4
+		ffmpeg -framerate 20 -pattern_type glob -i "$TMPDIR/output-*.png" -c:v libx264 -pix_fmt yuv420p 'out.mp4'
+		log "[OK] please check resulting animation: '$PWD/out.mp4'"
 		exit 0
 	;;
 esac
