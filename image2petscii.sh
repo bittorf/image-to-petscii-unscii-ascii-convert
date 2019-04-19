@@ -1,22 +1,21 @@
 #!/bin/sh
 
 [ -z "$1" ] && {
-	echo "Usage: $0 <convert|start> <file1> <file2>"
-	echo "       $0 convert <imagefile> <c64_characterfile>"
-	echo "       $0 convert <videofile> <c64_characterfile> <crop-coords-gimpstyle>"
-	echo "       $0 start"
-	echo "       $0 clean"
+	echo "Usage: $0 --switch1 arg --switch2 arg"
 	echo
+	echo "switches are:"
+	echo "		--action convert|clean|start"
+	echo "		--crop ..."
+	echo "		--logfile ..."
+	echo "		--tmpdir ..."
+	echo "		--cachefile ..."
+	echo "		--inputfile ..."
+	echo
+	echo "--crop"
 	echo "       gimpstyle-crop-coordinates from top leftmost to bottom-right, e.g."
 	echo "       start from x=256 and y=58 with 320x200 size"
 	echo "       320x200+256+58"
 	echo
-	echo "--action"
-	echo "--crop"
-	echo "--logfile"
-	echo "--tmpdir"
-	echo "--cachefile"
-	echo "--inputfile"
 
 	exit 1
 }
@@ -369,16 +368,18 @@ check_deps || exit 1
 
 is_video "$FILE_IN_ORIGINAL" && {
 	log "convert video into frames 'video-images-xxxxxx.png' in dir $PWD"
-	ffmpeg -i "$FILE_IN_ORIGINAL" "video-images-%06d.png"
+	ffmpeg -i "$FILE_IN_ORIGINAL" "video-images-%06d.png" || exit 1
 	log "extracted: $( ls -1 "video-images-"* | wc -l ) images"
 
 	[ -n "$CROP" ] && {
 		log "apply crop '$CROP' to every file"
-		rm *".cropped.png"
+		for FILE in *".cropped.png"; do {
+			[ -e "$FILE" ] && rm "$FILE"
+		} done
 
 		for FILE in "video-images-"*; do {
-			convert "$FILE" -crop "$CROP" "$FILE.cropped.png"
-			mv "$FILE.cropped.png" "$FILE"
+			convert "$FILE" -crop "$CROP" "$FILE.cropped.png" || exit 1
+			mv "$FILE.cropped.png" "$FILE" || exit 1
 		} done
 	}
 
@@ -388,7 +389,8 @@ is_video "$FILE_IN_ORIGINAL" && {
 	read -r NOP && echo "$NOP"
 
 	for FILE in "video-images-"*; do {
-		$0 --action "$ACTION" --inputfile "$FILE"
+		log "$0 --action $ACTION --inputfile '$FILE'"
+		$0 --action "$ACTION" --inputfile "$FILE" || exit 1
 	} done
 
 	[ -e 'out.mp4' ] && rm 'out.mp4'
@@ -441,3 +443,5 @@ rm                      "$TMPDIR/tile_"*
 
 log "[OK] generated PETSCII-look-alike: '$DESTINATION'"
 log "[OK] logfile: '$LOG'"
+
+true
