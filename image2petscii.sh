@@ -122,7 +122,7 @@ while [ -n "$1" ]; do {
 [ -f "$FILE_IN_ORIGINAL" ] || exit 1
 [ -z "$ACTION" ] && exit 1
 
->"$LOG"		# new on every run
+true >"$LOG"		# new on every run
 
 STRIP_METADATA='-define png:include-chunk=none'
 alias explode='set -f;set +f --'
@@ -131,7 +131,8 @@ check_deps()
 {
 	local path app url
 
-	for app in dssim convert identify butteraugli ffmpeg; do {
+	# TODO: butteraugli
+	for app in dssim convert identify ffmpeg; do {
 		if path="$( command -v "$app" )"; then
 			log "[OK] $app: using '$path'"
 		else
@@ -178,6 +179,7 @@ characterset_into_tiles()
 
 get_image_resolution()
 {
+	# shellcheck disable=SC2046
 	eval $( identify -format "WIDTH=%[fx:w]; HEIGTH=%[fx:h];\n" "$1" )
 
 	export WIDTH=$WIDTH
@@ -190,7 +192,9 @@ cache_add()
 	local score="$2"
 	local score_plain="$3"
 	local frame_pet="$4"
-	local chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
+	local chksum
+
+	chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
 
 	# format:
 	# filehash score_integer score_float /path/to/result-char
@@ -202,11 +206,12 @@ cache_add()
 pattern_cached()
 {
 	local file="$1"
-	local chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
-	local line
+	local line chksum
+
+	chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
 
 	line="$( grep -s "$chksum" "$CACHEFILE" )" && {
-		set -- $line
+		explode $line
 		export SCORE=$2
 		export SCORE_PLAIN=$3
 		export FRAME_PET=$4
@@ -229,6 +234,7 @@ png2petscii()
 #		butter="$( butteraugli "$file1" "$file2" )"
 #		[ "$butter" = '0.000000' ] || log "butter: $butter"
 
+		# shellcheck disable=SC2046
 		explode $( dssim "$file1" "$file2" )
 
 		out="$1"			# e.g. 20.497861
@@ -339,6 +345,18 @@ cleanup()
 	} done
 }
 
+is_video()
+{
+	case "$( file --mime-type -b "$1" )" in
+		'video/'*|'image/gif')
+			true
+		;;
+		*)
+			false
+		;;
+	esac
+}
+
 [ "$ACTION" = 'clean' ] && {
 	cleanup
 	exit 0
@@ -346,29 +364,39 @@ cleanup()
 
 check_deps || exit 1
 
-case "$( file --mime-type -b "$FILE_IN_ORIGINAL" )" in
-	'video/'*|'image/gif')
-		ffmpeg -i "$FILE_IN_ORIGINAL" "video-images-%06d.png"
-		log "extracted: $( ls -1 "video-images-"* | wc -l ) images"
 
-		rm *.cropped.png
+### convert video into frames and call ourselfes:
+
+is_video "$FILE_IN_ORIGINAL" && {
+	log "convert video into frames 'video-images-xxxxxx.png' in dir $PWD"
+	ffmpeg -i "$FILE_IN_ORIGINAL" "video-images-%06d.png"
+	log "extracted: $( ls -1 "video-images-"* | wc -l ) images"
+
+	[ -n "$CROP" ] && {
+		log "apply crop '$CROP' to every file"
+		rm *".cropped.png"
+
 		for FILE in "video-images-"*; do {
 			convert "$FILE" -crop "$CROP" "$FILE.cropped.png"
+			mv "$FILE.cropped.png" "$FILE"
 		} done
+	}
 
-		ffmpeg -framerate 20 -pattern_type glob -i "*.cropped.png" -c:v libx264 -pix_fmt yuv420p 'out.mp4'
-		log "[OK] please check resulting animation: '$PWD/out.mp4' and press <enter>"
-		read NOP
+	[ -e 'out.mp4' ] && rm 'out.mp4'
+	ffmpeg -framerate 20 -pattern_type glob -i "*.cropped.png" -c:v libx264 -pix_fmt yuv420p 'out.mp4'
+	log "[OK] please check resulting animation: '$PWD/out.mp4' and press <enter>"
+	read -r NOP && echo "$NOP"
 
-		for FILE in "video-images-"*; do {
-			$0 --action "$ACTION" --inputfile "$FILE"
-		} done
+	for FILE in "video-images-"*; do {
+		$0 --action "$ACTION" --inputfile "$FILE"
+	} done
 
-		ffmpeg -framerate 20 -pattern_type glob -i "$TMPDIR/output-*.png" -c:v libx264 -pix_fmt yuv420p 'out.mp4'
-		log "[OK] please check resulting animation: '$PWD/out.mp4'"
-		exit 0
-	;;
-esac
+	[ -e 'out.mp4' ] && rm 'out.mp4'
+	ffmpeg -framerate 20 -pattern_type glob -i "$TMPDIR/output-*.png" -c:v libx264 -pix_fmt yuv420p 'out.mp4'
+	log "[OK] please check resulting animation: '$PWD/out.mp4'"
+
+	exit 0
+}
 
 [ "$ACTION" = 'convert' ] && {
 	cleanup
