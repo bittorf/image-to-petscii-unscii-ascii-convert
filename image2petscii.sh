@@ -126,6 +126,30 @@ true >"$LOG"		# new on every run
 STRIP_METADATA='-define png:include-chunk=none'
 alias explode='set -f;set +f --'
 
+cpu_load_acceptable()
+{
+	local load rest i=-1
+
+	read -r load rest </proc/loadavg
+
+	# count cpu's, e.g. 4 -> i=3
+	for _ in /sys/devices/system/cpu/cpu[0-9]*; do i=$(( i + 1 )); done
+
+	case "$load" in
+		[0-1].*)
+			# always allow load of 0...1.x
+			true
+		;;
+		[0-$i].*)
+			# for e.g. 4 cpu's accept a load of 0...3.x
+			true
+		;;
+		*)
+			false
+		;;
+	esac
+}
+
 check_deps()
 {
 	local path app url
@@ -216,97 +240,103 @@ pattern_cached()
 		# shellcheck disable=SC2086
 		explode $line
 
-		export SCORE=$2
-		export SCORE_PLAIN=$3
-		export FRAME_PET=$4
-		log "[OK] cachehit: $FRAME_PET"
+		export SCORE="$2"
+		export SCORE_PLAIN="$3"
+		export FRAME_PET_CACHED="$4"
+
+		log "[OK] cachehit: $FRAME_PET_CACHED"
 	}
+}
+
+compare_pix()
+{
+	local file1="$1"
+	local file2="$2"
+	local out
+
+#	local butter
+#	# e.g. 74.168419
+#	butter="$( butteraugli "$file1" "$file2" )"
+#	[ "$butter" = '0.000000' ] || log "butter: $butter"
+
+	# shellcheck disable=SC2046
+	explode $( dssim "$file1" "$file2" )
+
+	out="$1"			# e.g. 20.497861
+	export SCORE_PLAIN="$out"	#     = 20497861
+	out="${out%.*}${out#*.}"
+	out="$( printf '%s' "$out" | sed 's/^0*//' )"
+
+	export SCORE="${out:-0}"
+
+	# smaller = better
+	# 0.000000 -> 000000 -> 0
+	# 0.756651 -> 756651
+	# 0.036651 -> 036651 -> 36651
 }
 
 png2petscii()
 {
+	local f=0
+	local x=0
+	local y=1
+	local frame frame_pet file_out
+	local cache solution_dir good
+	local best best_plain best_file
+
 	mkdir -p "$DIR_OUT"
 
-	compare_pix()
-	{
-		local file1="$1"
-		local file2="$2"
-		local out
-
-#		local butter
-#		# e.g. 74.168419
-#		butter="$( butteraugli "$file1" "$file2" )"
-#		[ "$butter" = '0.000000' ] || log "butter: $butter"
-
-		# shellcheck disable=SC2046
-		explode $( dssim "$file1" "$file2" )
-
-		out="$1"			# e.g. 20.497861
-		export SCORE_PLAIN="$out"	#     = 20497861
-		out="${out%.*}${out#*.}"
-		out="$( printf '%s' "$out" | sed 's/^0*//' )"
-
-		export SCORE="${out:-0}"
-
-		# smaller = better
-		# 0.000000 -> 000000 -> 0
-		# 0.756651 -> 756651
-		# 0.036651 -> 036651 -> 36651
-	}
-
-	F=0
-	X=0
-	Y=1
-	for FRAME in "$DIR_IN/parts-"*; do {
-		X=$(( X + 1 ))
-		test $X -gt 40 && {
-			X=1
-			Y=$(( Y + 1 ))
+	for frame in "$DIR_IN/parts-"*; do {
+		x=$(( x + 1 ))
+		[ $x -gt 40 ] && {
+			x=1
+			y=$(( y + 1 ))
 		}
 
-		BEST=999999999
-		for FRAME_PET in "$PETSCII_DIR/parts-"*; do {
-			CACHE=
-			SOLUTION_DIR="$DIR_IN/solutions/$X/$Y"
+		best=999999999
+		for frame_pet in "$PETSCII_DIR/parts-"*; do {
+			cache=
+			solution_dir="$DIR_IN/solutions/$x/$y"
 
-			if pattern_cached "$FRAME"; then
-				CACHE='true'
-				BEST=$SCORE
-				BEST_PLAIN=$SCORE_PLAIN
-				BEST_FILE="$FRAME_PET"
+			if pattern_cached "$frame"; then		# sets var SCORE|SCORE_PLAIN|FRAME_PET_CACHED
+				cache='true'
+				best=$SCORE
+				best_plain=$SCORE_PLAIN
+				best_file="$FRAME_PET_CACHED"
 
-				mkdir -p "$SOLUTION_DIR/$BEST"
-				cp "$BEST_FILE" "$SOLUTION_DIR/$BEST/"
-				cp "$FRAME" "$SOLUTION_DIR/original.png"
+				mkdir -p "$solution_dir/$best"
+				cp "$best_file" "$solution_dir/$best/"
+				cp "$frame" "$solution_dir/original.png"
 
 				break
 			else
-				compare_pix "$FRAME" "$FRAME_PET"	# sets var $SCORE
-				test "$SCORE" -lt "$BEST" && {
-					BEST=$SCORE
-					BEST_PLAIN=$SCORE_PLAIN
-					BEST_FILE="$FRAME_PET"
+				compare_pix "$frame" "$frame_pet"	# sets var SCORE|SCORE_PLAIN
 
-					mkdir -p "$SOLUTION_DIR/$BEST"
-					cp "$BEST_FILE" "$SOLUTION_DIR/$BEST/"
-					cp "$FRAME" "$SOLUTION_DIR/original.png"
+				test "$score" -lt "$best" && {
+					best=$SCORE
+					best_plain=$SCORE_PLAIN
+					best_file="$frame_pet"
 
-					log "new BEST: $BEST = $BEST_PLAIN - see: $SOLUTION_DIR"
+					mkdir -p "$solution_dir/$best"
+					cp "$best_file" "$solution_dir/$best/"
+					cp "$frame" "$solution_dir/original.png"
+
+					log "new BEST: $best = $best_plain - see: $solution_dir/"
 				}
 			fi
 		} done
 
-		[ "$CACHE" = 'true' ] || cache_add "$FRAME" "$BEST" "$BEST_PLAIN" "$BEST_FILE"
+		[ "$cache" = 'true' ] || cache_add "$frame" "$best" "$best_plain" "$best_file"		# TODO: algo|pixelsize
 
-		FILE_OUT="$DIR_OUT/parts-$( printf '%03i' "$F" ).png"
-		F=$(( F + 1 ))
+		file_out="$DIR_OUT/parts-$( printf '%03i' "$f" ).png"
+		f=$(( f + 1 ))
 
-		GOOD=bad
-		test "$BEST" -le 999999 && GOOD='+++'
-		cp "$BEST_FILE" "$FILE_OUT"
-		log "$BEST_PLAIN -> $BEST = $GOOD X:$X Y:$Y = $BEST_FILE - $FILE_OUT IN: $FRAME"
+		good='bad'
+		test "$best" -le 999999 && good='+++'
+
+		cp "$best_file" "$file_out"
+		log "$best_plain -> $best = $good x:$x y:$y = $best_file - $file_out IN: $frame"
 	} done
-
 }
 
 image2monochrome320x200()		# TODO: no $FILE_IN and no $DIR_IN
