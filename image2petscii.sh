@@ -11,6 +11,7 @@
 	echo "		--tmpdir ..."
 	echo "		--cachefile ..."
 	echo "		--inputfile ..."
+	echo "		--algo dssim|butteraugli"
 	echo "		--animation_already_unpacked"
 	echo
 	echo "--crop"
@@ -58,6 +59,7 @@ DESTINATION="$TMPDIR/output-${UNIQ_ID}.png"		# resulting imaga
 CHARSET='petscii_all'
 PETSCII_DIR='c64_petscii_chars'				# 8x8 blocks of all petscii-chars, generated from CHARACTERFILE
 
+ALGO='dssim'
 CACHEFILE=
 CACHEFILE_PRE="$TMPDIR/cachefile"			# see cache_add() and pattern_cached()
 ACTION=
@@ -79,6 +81,18 @@ while [ -n "$1" ]; do {
 				;;
 				*)
 					log "invalid --action '$SWITCH_ARG1'"
+					exit 1
+				;;
+			esac
+		;;
+		'--algo')
+			case "$SWITCH_ARG1" in
+				'dssim')
+					ALGO='dssim'
+					shift
+				;;
+				*)
+					log "invalid --algo"
 					exit 1
 				;;
 			esac
@@ -148,7 +162,7 @@ while [ -n "$1" ]; do {
 
 [ -f "$FILE_IN_ORIGINAL" ] || exit 1
 [ -z "$ACTION" ] && exit 1
-[ -z "$CACHEFILE" ] && CACHEFILE="$CACHEFILE_PRE-$CHARSET"
+[ -z "$CACHEFILE" ] && CACHEFILE="$CACHEFILE_PRE-$ALGO-$CHARSET"
 
 true >"$LOG"		# new on every run
 
