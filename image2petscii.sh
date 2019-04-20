@@ -430,7 +430,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 
 	# call outself for each file
 	for FILE in "video-images-"*; do {
-		while ! cpu_load_acceptable; sleep 1; done
+		while ! cpu_load_acceptable; do sleep 1; done
 
 		(
 			$0	--action "$ACTION" \
