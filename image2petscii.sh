@@ -370,6 +370,7 @@ png2petscii()
 	mkdir -p "$DIR_OUT"
 
 	for frame in "$DIR_IN/parts-"*; do {
+#		log "png2petscii() frame: $frame from $DIR_IN/parts-*"
 		[ -f "$frame" ] || continue
 
 		x=$(( x + 1 ))
@@ -379,7 +380,8 @@ png2petscii()
 		}
 
 		best=999999999
-		for frame_pet in "$PETSCII_DIR/parts-"*; do {
+		for frame_pet in "${PETSCII_DIR}-${CHARSET}/parts-"*; do {
+#			log "png2petscii() frame_pet: $frame_pet from ${PETSCII_DIR}-${CHARSET}/parts-*"
 			[ -f "$frame_pet" ] || continue
 
 			cache=
