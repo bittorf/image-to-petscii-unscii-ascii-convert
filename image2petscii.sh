@@ -355,6 +355,8 @@ png2petscii()
 	mkdir -p "$DIR_OUT"
 
 	for frame in "$DIR_IN/parts-"*; do {
+		[ -f "$frame" ] || continue
+
 		x=$(( x + 1 ))
 		[ $x -gt 40 ] && {
 			x=1
@@ -363,9 +365,10 @@ png2petscii()
 
 		best=999999999
 		for frame_pet in "$PETSCII_DIR/parts-"*; do {
+			[ -f "$frame_pet" ] || continue
+
 			cache=
 			solution_dir="$DIR_IN/solutions/$x/$y"
-			[ -f "$frame_pet" ] || continue
 
 			if pattern_cached "$frame"; then		# sets var SCORE|SCORE_PLAIN|FRAME_PET_CACHED
 				cache='true'
