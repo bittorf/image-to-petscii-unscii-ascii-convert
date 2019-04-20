@@ -283,7 +283,7 @@ cache_add()
 	local frame_pet="$4"		# full path - see png2petscii()
 	local chksum
 
-	[ -f "$file" ] || return 1
+	[ -f "$file" -a -f "$frame_pet" ] || return 1
 	chksum="$( sha256sum "$file" | cut -d' ' -f1 )"		# TODO: only store 8 x 8 bit = 8 HEX-Bytes = 16 chars (not 64!)
 
 	# format:
