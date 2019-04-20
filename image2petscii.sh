@@ -47,11 +47,13 @@ TMPDIR='/home/bastian/ledebot'
 [ -d "$TMPDIR" ] || TMPDIR='/run/shm'
 LOG="$TMPDIR/log.txt"
 
-DIR_IN="inputgfx-$( uniq_id )"				# 8x8 blocks - original (but converted to monochrome)
-DIR_OUT="outputgfx-$( uniq_id )"			# 8x8 blocks - petscii
+UNIQ_ID="$( uniq_id )"
+
+DIR_IN="inputgfx-${UNIQ_ID}"				# 8x8 blocks - original (but converted to monochrome)
+DIR_OUT="outputgfx-${UNIQ_ID}"			# 8x8 blocks - petscii
 FILE_IN='image-mono.png'				# convert gfx.jpg -resize "320x200!" -monochrome image-mono.png
 
-DESTINATION="$TMPDIR/output-$( uniq_id ).png"		# resulting imaga
+DESTINATION="$TMPDIR/output-${UNIQ_ID}.png"		# resulting imaga
 
 CHARSET='petscii_all'
 PETSCII_DIR='c64_petscii_chars'				# 8x8 blocks of all petscii-chars, generated from CHARACTERFILE
@@ -530,8 +532,8 @@ join_chars_into_frame()
 	local row_starts='true'
 	local frame file p1 p2
 
-	p1="$TMPDIR/pic_stitched_together1-$( uniq_id ).png"
-	p2="$TMPDIR/pic_stitched_together2-$( uniq_id ).png"
+	p1="$TMPDIR/pic_stitched_together1-${UNIQ_ID}.png"
+	p2="$TMPDIR/pic_stitched_together2-${UNIQ_ID}.png"
 
 	for frame in "$DIR_OUT/parts-"*; do {		# append/stitch a complete x-row together
 		x=$(( x + 8 ))				# and start again in next row. at the end
