@@ -58,7 +58,8 @@ DESTINATION="$TMPDIR/output-${UNIQ_ID}.png"		# resulting imaga
 CHARSET='petscii_all'
 PETSCII_DIR='c64_petscii_chars'				# 8x8 blocks of all petscii-chars, generated from CHARACTERFILE
 
-CACHEFILE="$TMPDIR/cachefile"				# see cache_add()
+CACHEFILE=
+CACHEFILE_PRE="$TMPDIR/cachefile"			# see cache_add() and pattern_cached()
 ACTION=
 UNPACK_ANIMATION='true'
 
@@ -147,10 +148,11 @@ while [ -n "$1" ]; do {
 
 [ -f "$FILE_IN_ORIGINAL" ] || exit 1
 [ -z "$ACTION" ] && exit 1
+[ -z "$CACHEFILE" ] && CACHEFILE="$CACHEFILE_PRE-$CHARSET"
 
 true >"$LOG"		# new on every run
 
-STRIP_METADATA='-define png:include-chunk=none'
+STRIP_METADATA='-define png:include-chunk=none'		# used for imagemagick/convert
 alias explode='set -f;set +f --'
 
 cpu_load_acceptable()
