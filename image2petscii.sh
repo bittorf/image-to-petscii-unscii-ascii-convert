@@ -5,6 +5,7 @@
 	echo
 	echo "switches are:"
 	echo "		--action convert|clean|start"
+	echo "		--charset petscii_lower|petscii_upper|petscii_all"
 	echo "		--crop ..."
 	echo "		--logfile ..."
 	echo "		--tmpdir ..."
@@ -13,9 +14,14 @@
 	echo "		--animation_already_unpacked"
 	echo
 	echo "--crop"
-	echo "       gimpstyle-crop-coordinates from top leftmost to bottom-right, e.g."
-	echo "       start from x=256 and y=58 with 320x200 size"
-	echo "       320x200+256+58"
+	echo "		gimpstyle-crop-coordinates from top leftmost to bottom-right, e.g."
+	echo "		start from x=256 and y=58 with 320x200 size"
+	echo "		320x200+256+58"
+	echo
+	echo "--charset"
+	echo "		lower: https://www.c64-wiki.de/wiki/Zeichen#Zeichensatz_1"
+	echo "		upper: https://www.c64-wiki.de/wiki/Zeichen#Zeichensatz_2"
+	echo "		all:   both are used (which is the default)"
 	echo
 
 	exit 1
@@ -70,6 +76,27 @@ while [ -n "$1" ]; do {
 				;;
 				*)
 					log "invalid --action '$SWITCH_ARG1'"
+					exit 1
+				;;
+			esac
+		;;
+		'--charset')
+			case "$SWITCH_ARG1" in
+				'petscii_lower')
+					PETSCII_CHARACTERFILE="$SCRIPTDIR/c64_petscii_chars_lower.png"
+					shift
+				;;
+				'petscii_upper')
+					PETSCII_CHARACTERFILE="$SCRIPTDIR/c64_petscii_chars_upper.png"
+					shift
+				;;
+				'petscii_all')
+					PETSCII_CHARACTERFILE="$SCRIPTDIR/c64_petscii_chars_all.png"
+					shift
+				;;
+				*)
+					log "invalid --charset"
+					exit 1
 				;;
 			esac
 		;;
@@ -79,6 +106,7 @@ while [ -n "$1" ]; do {
 				shift
 			else
 				log "invalid --crop '$SWITCH_ARG1'"
+				exit 1
 			fi
 		;;
 		'--animation_already_unpacked')
