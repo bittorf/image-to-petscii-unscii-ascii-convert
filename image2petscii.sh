@@ -145,7 +145,7 @@ cpu_load_acceptable()
 			true
 		;;
 		*)
-			false
+			test ${load%.*} -le $i
 		;;
 	esac
 }
