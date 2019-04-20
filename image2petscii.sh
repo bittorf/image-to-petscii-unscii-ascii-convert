@@ -547,7 +547,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 			mv "$FILE.cropped.png" "$FILE" || exit 1
 		} done
 
-		# join all images
+		# join all images to video
 		[ -e 'out.mp4' ] && rm 'out.mp4'
 		ffmpeg -framerate 20 -pattern_type glob -i "video-images-*" -c:v libx264 -pix_fmt yuv420p 'out.mp4'
 		log "[OK] please check resulting animation: '$PWD/out.mp4' and press <enter> or abort with STRG + C"
@@ -573,7 +573,9 @@ is_video "$FILE_IN_ORIGINAL" && {
 		sleep 5
 	} done
 
-	while [ "$J" != "$I" ]; do {
+	J=0
+	while [ $J -lt $I ]; do {
+		# e.g. /home/bastian/ledebot/output-000013_3467670820-petscii_lower.png
 		J=0; for FILE in "$TMPDIR/output-"*".png"; do J=$(( J + 1 )); done
 		log "waiting for jobs to finish, have $J frames but should be $I"
 		sleep 60
