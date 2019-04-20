@@ -260,7 +260,11 @@ compare_pix()
 #	[ "$butter" = '0.000000' ] || log "butter: $butter"
 
 	# shellcheck disable=SC2046
-	explode $( dssim "$file1" "$file2" )
+	explode $( dssim "$file1" "$file2" || {
+			log "[dssim:$?] - dssim '$file1' '$file2'"
+			echo '99.999999'
+		}
+	)
 
 	out="$1"			# e.g. 20.497861
 	export SCORE_PLAIN="$out"	#     = 20497861
