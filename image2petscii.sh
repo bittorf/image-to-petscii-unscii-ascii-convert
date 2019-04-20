@@ -1,6 +1,8 @@
 #!/bin/sh
 
-[ -z "$1" ] && {
+show_usage_and_die()
+{
+	echo
 	echo "Usage: $0 --switch1 arg --switch2 arg"
 	echo
 	echo "switches are:"
@@ -14,6 +16,7 @@
 	echo "		--algo dssim|butteraugli"
 	echo "		--animation_already_unpacked"
 	echo "		--debug"
+	echo "		--help"
 	echo
 	echo "--crop"
 	echo "		gimpstyle-crop-coordinates from top leftmost to bottom-right, e.g."
@@ -24,10 +27,13 @@
 	echo "		lower: https://www.c64-wiki.de/wiki/Zeichen#Zeichensatz_1"
 	echo "		upper: https://www.c64-wiki.de/wiki/Zeichen#Zeichensatz_2"
 	echo "		all:   both are used (which is the default)"
+	echo "		all:   http://sta.c64.org/cbm64pet.html"
 	echo
 
 	exit 1
 }
+
+[ -z "$1" ] && show_usage_and_die
 
 log()
 {
@@ -73,6 +79,9 @@ while [ -n "$1" ]; do {
 	shift
 
 	case "$SWITCH" in
+		'--help')
+			show_usage_and_die
+		;;
 		'--action')
 			case "$SWITCH_ARG1" in
 				convert|start|clean)
@@ -81,7 +90,7 @@ while [ -n "$1" ]; do {
 				;;
 				*)
 					log "invalid --action '$SWITCH_ARG1'"
-					exit 1
+					show_usage_and_die
 				;;
 			esac
 		;;
@@ -96,7 +105,7 @@ while [ -n "$1" ]; do {
 				;;
 				*)
 					log "invalid --algo"
-					exit 1
+					show_usage_and_die
 				;;
 			esac
 		;;
@@ -108,7 +117,7 @@ while [ -n "$1" ]; do {
 				;;
 				*)
 					log "invalid --charset"
-					exit 1
+					show_usage_and_die
 				;;
 			esac
 		;;
@@ -118,7 +127,7 @@ while [ -n "$1" ]; do {
 				shift
 			else
 				log "invalid --crop '$SWITCH_ARG1'"
-				exit 1
+				show_usage_and_die
 			fi
 		;;
 		'--animation_already_unpacked')
@@ -130,7 +139,7 @@ while [ -n "$1" ]; do {
 				shift
 			else
 				log "can not read --inputfile '$SWITCH_ARG1'"
-				exit 1
+				show_usage_and_die
 			fi
 		;;
 		'--cachefile')
@@ -139,7 +148,7 @@ while [ -n "$1" ]; do {
 				shift
 			else
 				log "can not write --cachefile to '$SWITCH_ARG1'"
-				exit 1
+				show_usage_and_die
 			fi
 		;;
 		'--logfile')
@@ -148,7 +157,7 @@ while [ -n "$1" ]; do {
 				shift
 			else
 				log "can not write --logfile to '$SWITCH_ARG1'"
-				exit 1
+				show_usage_and_die
 			fi
 		;;
 		'--tmpdir')
@@ -157,14 +166,14 @@ while [ -n "$1" ]; do {
 				shift
 			else
 				log "bad arg for --tmpdir - dir '$SWITCH_ARG1' not found"
-				exit 1
+				show_usage_and_die
 			fi
 		;;
 	esac
 } done
 
-[ -f "$FILE_IN_ORIGINAL" ] || exit 1
-[ -z "$ACTION" ] && exit 1
+[ -f "$FILE_IN_ORIGINAL" ] || show_usage_and_die
+[ -z "$ACTION" ] && show_usage_and_die
 [ -z "$CACHEFILE" ] && CACHEFILE="$CACHEFILE_PRE-$ALGO-$CHARSET"
 
 true >"$LOG"		# new on every run
