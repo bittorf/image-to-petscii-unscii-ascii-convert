@@ -270,11 +270,11 @@ compare_pix()
 	)
 
 	out="$1"			# e.g. 20.497861
-	export SCORE_PLAIN="$out"	#     = 20497861
+	export SCORE_PLAIN="$out"
+
 	out="${out%.*}${out#*.}"
 	out="$( printf '%s' "$out" | sed 's/^0*//' )"
-
-	export SCORE="${out:-0}"
+	export SCORE="${out:-0}"	# e.g. 20497861
 
 	# smaller = better
 	# 0.000000 -> 000000 -> 0
@@ -319,7 +319,7 @@ png2petscii()
 			else
 				compare_pix "$frame" "$frame_pet"	# sets var SCORE|SCORE_PLAIN
 
-				test "$score" -lt "$best" && {
+				test "$SCORE" -lt "$best" && {
 					best=$SCORE
 					best_plain=$SCORE_PLAIN
 					best_file="$frame_pet"
