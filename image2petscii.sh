@@ -621,7 +621,7 @@ join_chars_into_frame()
 		cp                "$p2" "$p1"
 
 		[ $x -eq $dest_x ] && {
-			file="$TMPDIR/tile_$( printf '%03i' "$x_tile" ).png"	# 0-999
+			file="$TMPDIR/tile_${UNIQ_ID}_$( printf '%03i' "$x_tile" ).png"	# 0-999
 			cp "$p1" "$file"
 
 			x_tile=$(( x_tile + 1 ))
@@ -634,8 +634,8 @@ join_chars_into_frame()
 	log "[OK] used '$DIR_IN/$FILE_IN' as source"
 
 	# shellcheck disable=SC2086
-	convert $STRIP_METADATA "$TMPDIR/tile_"* -append "$DESTINATION"		# -append = vertical
-	rm                      "$TMPDIR/tile_"*
+	convert $STRIP_METADATA "$TMPDIR/tile_${UNIQ_ID}_"* -append "$DESTINATION"		# -append = vertical
+	rm                      "$TMPDIR/tile_${UNIQ_ID}_"*
 	rm "$p1" "$p2"
 
 	log "[OK] generated PETSCII-look-alike: '$DESTINATION'"
