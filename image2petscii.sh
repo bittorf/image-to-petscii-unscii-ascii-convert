@@ -10,6 +10,7 @@
 	echo "		--tmpdir ..."
 	echo "		--cachefile ..."
 	echo "		--inputfile ..."
+	echo "		--animation_already_unpacked"
 	echo
 	echo "--crop"
 	echo "       gimpstyle-crop-coordinates from top leftmost to bottom-right, e.g."
@@ -51,7 +52,7 @@ PETSCII_DIR='c64_petscii_chars'				# 8x8 blocks of all petscii-chars, generated 
 
 CACHEFILE="$TMPDIR/cachefile"				# see cache_add()
 ACTION=
-
+UNPACK_ANIMATION='true'
 
 ### parse arguments:
 
@@ -75,9 +76,13 @@ while [ -n "$1" ]; do {
 		'--crop')
 			if [ -n "$SWITCH_ARG1" ]; then
 				CROP="$SWITCH_ARG1"
+				shift
 			else
 				log "invalid --crop '$SWITCH_ARG1'"
 			fi
+		;;
+		'--animation_already_unpacked')
+			UNPACK_ANIMATION=
 		;;
 		'--inputfile')
 			if [ -s "$SWITCH_ARG1" ]; then
@@ -410,9 +415,13 @@ check_deps || exit 1
 ### convert video into frames and call ourselfes:
 
 is_video "$FILE_IN_ORIGINAL" && {
-	# convert video into frames
-	log "convert video into frames 'video-images-xxxxxx.png' in dir $PWD"
-	ffmpeg -i "$FILE_IN_ORIGINAL" "video-images-%06d.png" || exit 1
+	if [ -n "$UNPACK_ANIMATION" ]; then
+		# convert video into frames
+		log "convert video into frames 'video-images-xxxxxx.png' in dir $PWD"
+		ffmpeg -i "$FILE_IN_ORIGINAL" "video-images-%06d.png" || exit 1
+	else
+		log "using already unpacked frames 'video-images-xxxxxx.png' in dir $PWD"
+	fi
 
 	I=0; for FILE in 'video-images-'*; do I=$(( I + 1 )); done
 	log "extracted: $I images"
@@ -439,7 +448,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 
 	# call outself for each file
 	for FILE in 'video-images-'*; do {
-		while ! cpu_load_acceptable; do sleep 1; done
+		while ! cpu_load_acceptable; do log "no more forks: $( uptime )"; sleep 30; done
 
 		(
 			$0	--action "$ACTION" \
