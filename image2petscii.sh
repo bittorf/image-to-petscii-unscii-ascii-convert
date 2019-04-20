@@ -197,8 +197,8 @@ while [ -n "$1" ]; do {
 UNIQ_ID="$( uniq_id )"
 [ -n "$MYID" ] && UNIQ_ID="${MYID}_${UNIQ_ID}"
 
-DIR_IN="inputgfx-${UNIQ_ID}"				# 8x8 blocks - original (but converted to monochrome)
-DIR_OUT="outputgfx-${UNIQ_ID}"				# 8x8 blocks - petscii
+DIR_IN="$TMPDIR/inputgfx-${UNIQ_ID}"				# 8x8 blocks - original (but converted to monochrome)
+DIR_OUT="$TMPDIR/outputgfx-${UNIQ_ID}"				# 8x8 blocks - petscii
 
 DESTINATION="$TMPDIR/output-${UNIQ_ID}-${CHARSET}.png"	# resulting image
 STRIP_METADATA='-define png:include-chunk=none'		# used for imagemagick/convert
@@ -578,7 +578,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 		# e.g. /home/bastian/ledebot/output-000013_3467670820-petscii_lower.png
 		J=0; for FILE in "$TMPDIR/output-"*".png"; do J=$(( J + 1 )); done
 		log "waiting for jobs to finish, have $J frames but should be $I"
-		sleep 60
+		sleep 10
 	} done
 
 	# join all resulting images to video
