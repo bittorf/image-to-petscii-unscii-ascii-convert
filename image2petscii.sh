@@ -15,6 +15,7 @@ show_usage_and_die()
 	echo "		--inputfile ..."
 	echo "		--algo dssim|butteraugli"
 	echo "		--animation_already_unpacked"
+	echo "		--logappend"
 	echo "		--debug"
 	echo "		--help"
 	echo
@@ -70,6 +71,7 @@ CACHEFILE=
 CACHEFILE_PRE="$TMPDIR/cachefile"			# see cache_add() and pattern_cached()
 ACTION=
 UNPACK_ANIMATION='true'
+LOGAPPEND=
 
 ### parse arguments:
 
@@ -93,6 +95,9 @@ while [ -n "$1" ]; do {
 					show_usage_and_die
 				;;
 			esac
+		;;
+		'--logappend')
+			LOGAPPEND='true'
 		;;
 		'--debug')
 			DEBUG='true'
@@ -176,7 +181,8 @@ while [ -n "$1" ]; do {
 [ -z "$ACTION" ] && show_usage_and_die
 [ -z "$CACHEFILE" ] && CACHEFILE="$CACHEFILE_PRE-$ALGO-$CHARSET"
 
-true >"$LOG"		# new on every run
+# new file on every run, but not on self-call see --logappend
+[ -z "$LOGAPPEND" ] && true >"$LOG"
 
 DESTINATION="$TMPDIR/output-${UNIQ_ID}-${CHARSET}.png"	# resulting image
 STRIP_METADATA='-define png:include-chunk=none'		# used for imagemagick/convert
@@ -542,7 +548,8 @@ is_video "$FILE_IN_ORIGINAL" && {
 				--cachefile "$CACHEFILE" \
 				--logfile "$LOG" \
 				--charset "$CHARSET" \
-				--tmpdir "$TMPDIR"
+				--tmpdir "$TMPDIR" \
+				--logappend
 		) &
 
 		sleep 5
