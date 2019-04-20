@@ -56,8 +56,6 @@ DIR_IN="inputgfx-${UNIQ_ID}"				# 8x8 blocks - original (but converted to monoch
 DIR_OUT="outputgfx-${UNIQ_ID}"			# 8x8 blocks - petscii
 FILE_IN='image-mono.png'				# convert gfx.jpg -resize "320x200!" -monochrome image-mono.png
 
-DESTINATION="$TMPDIR/output-${UNIQ_ID}.png"		# resulting imaga
-
 CHARSET='petscii_all'
 PETSCII_DIR='c64_petscii_chars'				# 8x8 blocks of all petscii-chars, generated from CHARACTERFILE
 
@@ -171,6 +169,7 @@ while [ -n "$1" ]; do {
 
 true >"$LOG"		# new on every run
 
+DESTINATION="$TMPDIR/output-${UNIQ_ID}-${CHARSET}.png"	# resulting image
 STRIP_METADATA='-define png:include-chunk=none'		# used for imagemagick/convert
 alias explode='set -f;set +f --'
 
@@ -180,6 +179,7 @@ alias explode='set -f;set +f --'
 	log "ACTION: $ACTION"
 	log "DIR_IN: $DIR_IN"
 	log "DIR_OUT: $DIR_OUT"
+	log "DESTINATION: $DESTINATION"
 
 	read -r NOP && echo "$NOP"
 }
