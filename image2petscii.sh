@@ -406,7 +406,9 @@ is_video "$FILE_IN_ORIGINAL" && {
 	# convert video into frames
 	log "convert video into frames 'video-images-xxxxxx.png' in dir $PWD"
 	ffmpeg -i "$FILE_IN_ORIGINAL" "video-images-%06d.png" || exit 1
-	log "extracted: $( find . -type f -name 'video-images-*' | wc -l ) images"
+
+	I=0; for FILE in 'video-images-'*; do I=$(( I + 1 )); done
+	log "extracted: $I images"
 
 	[ -n "$CROP" ] && {
 		# remove old trash
@@ -429,7 +431,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 	}
 
 	# call outself for each file
-	for FILE in "video-images-"*; do {
+	for FILE in 'video-images-'*; do {
 		while ! cpu_load_acceptable; do sleep 1; done
 
 		(
@@ -441,6 +443,12 @@ is_video "$FILE_IN_ORIGINAL" && {
 		) &
 
 		sleep 5
+	} done
+
+	while [ "$J" != "$I" ]; do {
+		J=0; for FILE in "$TMPDIR/output-"*".png"; do J=$(( J + 1 )); done
+		log "waiting for jobs to finish, have $J frames but should be $I"
+		sleep 60
 	} done
 
 	# join all resulting images to video
