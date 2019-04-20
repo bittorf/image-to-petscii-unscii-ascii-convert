@@ -277,13 +277,13 @@ get_image_resolution()
 
 cache_add()
 {
-	local file="$1"
+	local file="$1"			# e.g. cachefile-dssim-petscii_lower
 	local score="$2"
 	local score_plain="$3"
-	local frame_pet="$4"
+	local frame_pet="$4"		# full path - see png2petscii()
 	local chksum
 
-	chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
+	chksum="$( sha256sum "$file" | cut -d' ' -f1 )"		# TODO: only store 8 x 8 bit = 8 HEX-Bytes = 16 chars (not 64!)
 
 	# format:
 	# filehash score_integer score_float /path/to/result-char
@@ -393,7 +393,7 @@ png2petscii()
 			fi
 		} done
 
-		[ "$cache" = 'true' ] || cache_add "$frame" "$best" "$best_plain" "$best_file"		# TODO: algo|pixelsize
+		[ "$cache" = 'true' ] || cache_add "$frame" "$best" "$best_plain" "$best_file"
 
 		file_out="$DIR_OUT/parts-$( printf '%03i' "$f" ).png"
 		f=$(( f + 1 ))
