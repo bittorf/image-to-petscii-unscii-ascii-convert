@@ -430,11 +430,17 @@ is_video "$FILE_IN_ORIGINAL" && {
 
 	# call outself for each file
 	for FILE in "video-images-"*; do {
-		$0	--action "$ACTION" \
-			--inputfile "$FILE" \
-			--cachefile "$CACHEFILE" \
-			--logfile "$LOG" \
-			--tmpdir "$TMPDIR" || exit 1
+		while ! cpu_load_acceptable; sleep 1; done
+
+		(
+			$0	--action "$ACTION" \
+				--inputfile "$FILE" \
+				--cachefile "$CACHEFILE" \
+				--logfile "$LOG" \
+				--tmpdir "$TMPDIR"
+		) &
+
+		sleep 5
 	} done
 
 	# join all resulting images to video
