@@ -53,7 +53,7 @@ FILE_IN='image-mono.png'				# convert gfx.jpg -resize "320x200!" -monochrome ima
 
 DESTINATION="$TMPDIR/output-$( uniq_id ).png"		# resulting imaga
 
-PETSCII_CHARACTERFILE="$SCRIPTDIR/c64_petscii_chars_all.png"
+CHARSET='petscii_all'
 PETSCII_DIR='c64_petscii_chars'				# 8x8 blocks of all petscii-chars, generated from CHARACTERFILE
 
 CACHEFILE="$TMPDIR/cachefile"				# see cache_add()
@@ -82,16 +82,8 @@ while [ -n "$1" ]; do {
 		;;
 		'--charset')
 			case "$SWITCH_ARG1" in
-				'petscii_lower')
-					PETSCII_CHARACTERFILE="$SCRIPTDIR/c64_petscii_chars_lower.png"
-					shift
-				;;
-				'petscii_upper')
-					PETSCII_CHARACTERFILE="$SCRIPTDIR/c64_petscii_chars_upper.png"
-					shift
-				;;
-				'petscii_all')
-					PETSCII_CHARACTERFILE="$SCRIPTDIR/c64_petscii_chars_all.png"
+				'petscii_lower'|'petscii_upper'|'petscii_all')
+					CHARSET="$SWITCH_ARG1"
 					shift
 				;;
 				*)
@@ -224,15 +216,32 @@ image_into_8x8tiles()
 
 characterset_into_tiles()
 {
-	if mkdir "$PETSCII_DIR" 2>/dev/null; then
-		[ -f "$PETSCII_CHARACTERFILE" ] || {
-			log "[ERROR] missing PETSCII characterfile: '$PETSCII_CHARACTERFILE'"
+	local charset="$1"
+	local charfile dir
+
+	case "$charset" in
+		'petscii_lower')
+			charfile="$SCRIPTDIR/c64_petscii_chars_lower.png"
+		;;
+		'petscii_upper')
+			charfile="$SCRIPTDIR/c64_petscii_chars_upper.png"
+		;;
+		'petscii_all'|*)
+			charfile="$SCRIPTDIR/c64_petscii_chars_all.png"
+		;;
+	esac
+
+	chardir="${PETSCII_DIR}-${charset}"
+
+	if mkdir "$chardir" 2>/dev/null; then
+		[ -f "$charfile" ] || {
+			log "[ERROR] missing PETSCII characterfile: '$charfile'"
 			return 1
 		}
 
 		# shellcheck disable=SC2086
-		convert $STRIP_METADATA "$PETSCII_CHARACTERFILE" "$PETSCII_DIR/chars.png" || return 1
-		image_into_8x8tiles "$PETSCII_DIR" "chars.png" || return 1
+		convert $STRIP_METADATA "$charfile" "$chardir/chars.png" || return 1	# any2png
+		image_into_8x8tiles "$chardir" "chars.png" || return 1
 	else
 		# already done
 		true
@@ -483,6 +492,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 				--inputfile "$FILE" \
 				--cachefile "$CACHEFILE" \
 				--logfile "$LOG" \
+				--charset "$CHARSET" \
 				--tmpdir "$TMPDIR"
 		) &
 
@@ -504,10 +514,10 @@ is_video "$FILE_IN_ORIGINAL" && {
 }
 
 [ "$ACTION" = 'convert' ] && {
-	# cleanup
+	# cleanup	# FIXME!
 	image2monochrome320x200 "$FILE_IN_ORIGINAL"
 	image_into_8x8tiles "$DIR_IN" "$FILE_IN" || exit 1
-	characterset_into_tiles || exit 1
+	characterset_into_tiles "$CHARSET" || exit 1
 	png2petscii
 }
 
