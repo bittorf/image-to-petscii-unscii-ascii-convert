@@ -170,7 +170,7 @@ cpu_load_acceptable()
 			true
 		;;
 		*)
-			test ${load%.*} -le $i
+			test "${load%.*}" -le $i
 		;;
 	esac
 }
@@ -523,14 +523,15 @@ is_video "$FILE_IN_ORIGINAL" && {
 
 join_chars_into_frame()
 {
-	local p1="$TMPDIR/pic_stitched_together1-$( uniq_id ).png"
-	local p2="$TMPDIR/pic_stitched_together2-$( uniq_id ).png"
 	local x=0
 	local y=0
 	local x_tile=0
 	local dest_x=320
 	local row_starts='true'
-	local frame file
+	local frame file p1 p2
+
+	p1="$TMPDIR/pic_stitched_together1-$( uniq_id ).png"
+	p2="$TMPDIR/pic_stitched_together2-$( uniq_id ).png"
 
 	for frame in "$DIR_OUT/parts-"*; do {		# append/stitch a complete x-row together
 		x=$(( x + 8 ))				# and start again in next row. at the end
