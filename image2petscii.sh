@@ -191,16 +191,19 @@ image_into_8x8tiles()
 
 characterset_into_tiles()
 {
-	[ -f "$PETSCII_CHARACTERFILE" ] || {
-		log "[ERROR] missing PETSCII characterfile: '$PETSCII_CHARACTERFILE'"
-		return 1
-	}
+	if mkdir "$PETSCII_DIR" 2>/dev/null; then
+		[ -f "$PETSCII_CHARACTERFILE" ] || {
+			log "[ERROR] missing PETSCII characterfile: '$PETSCII_CHARACTERFILE'"
+			return 1
+		}
 
-	mkdir -p "$PETSCII_DIR"
-
-	# shellcheck disable=SC2086
-	convert $STRIP_METADATA "$PETSCII_CHARACTERFILE" "$PETSCII_DIR/chars.png" || return 1
-	image_into_8x8tiles "$PETSCII_DIR" "chars.png" || return 1
+		# shellcheck disable=SC2086
+		convert $STRIP_METADATA "$PETSCII_CHARACTERFILE" "$PETSCII_DIR/chars.png" || return 1
+		image_into_8x8tiles "$PETSCII_DIR" "chars.png" || return 1
+	else
+		# already done
+		true
+	fi
 }
 
 get_image_resolution()
@@ -262,7 +265,7 @@ compare_pix()
 	# shellcheck disable=SC2046
 	explode $( dssim "$file1" "$file2" || {
 			log "[dssim:$?] - dssim '$file1' '$file2'"
-			echo '99.999999'
+			echo "99.999999 $file2"
 		}
 	)
 
@@ -464,7 +467,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 }
 
 [ "$ACTION" = 'convert' ] && {
-	cleanup
+	# cleanup
 	image2monochrome320x200 "$FILE_IN_ORIGINAL"
 	image_into_8x8tiles "$DIR_IN" "$FILE_IN" || exit 1
 	characterset_into_tiles || exit 1
