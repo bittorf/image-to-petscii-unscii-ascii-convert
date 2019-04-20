@@ -637,6 +637,7 @@ join_chars_into_frame()
 	convert $STRIP_METADATA "$TMPDIR/tile_${UNIQ_ID}_"* -append "$DESTINATION"		# -append = vertical
 	rm                      "$TMPDIR/tile_${UNIQ_ID}_"*
 	rm "$p1" "$p2"
+	rm -fR "$DIR_OUT"
 
 	log "[OK] generated PETSCII-look-alike: '$DESTINATION'"
 }
