@@ -13,6 +13,7 @@
 	echo "		--inputfile ..."
 	echo "		--algo dssim|butteraugli"
 	echo "		--animation_already_unpacked"
+	echo "		--debug"
 	echo
 	echo "--crop"
 	echo "		gimpstyle-crop-coordinates from top leftmost to bottom-right, e.g."
@@ -43,6 +44,7 @@ uniq_id()		# monoton raising
 
 ### all our defaults:
 
+DEBUG=
 SCRIPTDIR="$( cd -P -- "$( dirname -- "$0" )" && pwd -P )"
 TMPDIR='/home/bastian/ledebot'
 [ -d "$TMPDIR" ] || TMPDIR='/run/shm'
@@ -84,6 +86,9 @@ while [ -n "$1" ]; do {
 					exit 1
 				;;
 			esac
+		;;
+		'--debug')
+			DEBUG='true'
 		;;
 		'--algo')
 			case "$SWITCH_ARG1" in
@@ -168,6 +173,16 @@ true >"$LOG"		# new on every run
 
 STRIP_METADATA='-define png:include-chunk=none'		# used for imagemagick/convert
 alias explode='set -f;set +f --'
+
+[ -n "$DEBUG" ] && {
+	log "CACHEFILE: $CACHEFILE"
+	log "FILE_IN_ORIGINAL: $FILE_IN_ORIGINAL"
+	log "ACTION: $ACTION"
+	log "DIR_IN: $DIR_IN"
+	log "DIR_OUT: $DIR_OUT"
+
+	read -r NOP && echo "$NOP"
+}
 
 cpu_load_acceptable()
 {
@@ -384,7 +399,7 @@ png2petscii()
 			else
 				compare_pix "$frame" "$frame_pet"	# sets var SCORE|SCORE_PLAIN
 
-				test "$SCORE" -lt "$best" && {
+				[ "$SCORE" -lt "$best" ] && {
 					best=$SCORE
 					best_plain=$SCORE_PLAIN
 					best_file="$frame_pet"
@@ -406,8 +421,8 @@ png2petscii()
 		good='bad'
 		test "$best" -le 999999 && good='+++'
 
-		cp "$best_file" "$file_out"
-		log "$best_plain -> $best = $good x:$x y:$y = $best_file - $file_out IN: $frame"
+		[ -e "$best_file" ] && cp "$best_file" "$file_out"
+		log "${best_plain:-empty_best_plain} -> $best = $good x:$x y:$y = ${best_file:-empty_best_file} - $file_out IN: $frame"
 	} done
 }
 
