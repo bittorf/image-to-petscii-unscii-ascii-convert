@@ -15,6 +15,7 @@ show_usage_and_die()
 	echo "		--inputfile ..."
 	echo "		--algo dssim|butteraugli"
 	echo "		--animation_already_unpacked"
+	echo "		--myid ..."
 	echo "		--logappend"
 	echo "		--debug"
 	echo "		--help"
@@ -57,10 +58,7 @@ TMPDIR='/home/bastian/ledebot'
 [ -d "$TMPDIR" ] || TMPDIR='/run/shm'
 LOG="$TMPDIR/log.txt"
 
-UNIQ_ID="$( uniq_id )"
-
-DIR_IN="inputgfx-${UNIQ_ID}"				# 8x8 blocks - original (but converted to monochrome)
-DIR_OUT="outputgfx-${UNIQ_ID}"			# 8x8 blocks - petscii
+MYID=
 FILE_IN='image-mono.png'				# convert gfx.jpg -resize "320x200!" -monochrome image-mono.png
 
 CHARSET='petscii_all'
@@ -101,6 +99,18 @@ while [ -n "$1" ]; do {
 		;;
 		'--debug')
 			DEBUG='true'
+		;;
+		'--myid')
+			case "$SWITCH_ARG1" in
+				'')
+					log "invalid --myid '$SWITCH_ARG1'"
+					show_usage_and_die
+				;;
+				*)
+					MYID="$SWITCH_ARG1"
+					shift
+				;;
+			esac
 		;;
 		'--algo')
 			case "$SWITCH_ARG1" in
@@ -183,6 +193,12 @@ while [ -n "$1" ]; do {
 
 # new file on every run, but not on self-call see --logappend
 [ -z "$LOGAPPEND" ] && true >"$LOG"
+
+UNIQ_ID="$( uniq_id )"
+[ -n "$MYID" ] && UNIQ_ID="${MYID}_${UNIQ_ID}"
+
+DIR_IN="inputgfx-${UNIQ_ID}"				# 8x8 blocks - original (but converted to monochrome)
+DIR_OUT="outputgfx-${UNIQ_ID}"				# 8x8 blocks - petscii
 
 DESTINATION="$TMPDIR/output-${UNIQ_ID}-${CHARSET}.png"	# resulting image
 STRIP_METADATA='-define png:include-chunk=none'		# used for imagemagick/convert
@@ -540,6 +556,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 
 	# call outself for each file
 	for FILE in 'video-images-'*; do {
+		ID="$( echo "$FILE" | cut -d'-' -f3 | cut -d'.' -f1 )"	# e.g. 000123
 		while ! cpu_load_acceptable; do log "no more forks: $( uptime )"; sleep 30; done
 
 		(
@@ -549,6 +566,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 				--logfile "$LOG" \
 				--charset "$CHARSET" \
 				--tmpdir "$TMPDIR" \
+				--myid "$ID" \
 				--logappend
 		) &
 
