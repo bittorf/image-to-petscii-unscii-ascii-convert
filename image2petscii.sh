@@ -476,8 +476,8 @@ is_video "$FILE_IN_ORIGINAL" && {
 
 join_chars_into_frame()
 {
-	local p1="$TMPDIR/pic_stitched_together.png"
-	local p2="$TMPDIR/pic_stitched_together2.png"
+	local p1="$TMPDIR/pic_stitched_together1-$( uniq_id ).png"
+	local p2="$TMPDIR/pic_stitched_together2-$( uniq_id ).png"
 	local x=0
 	local y=0
 	local x_tile=0
@@ -498,9 +498,10 @@ join_chars_into_frame()
 		convert $STRIP_METADATA "$p1" "$frame" +append "$p2"		# horizontal: X+Y=XY
 		cp                "$p2" "$p1"
 
-		test $x -eq $dest_x && {
+		[ $x -eq $dest_x ] && {
 			file="$TMPDIR/tile_$( printf '%03i' "$x_tile" ).png"	# 0-999
 			cp "$p1" "$file"
+
 			x_tile=$(( x_tile + 1 ))
 			y=$(( y + 8 ))
 			x=0
@@ -513,6 +514,7 @@ join_chars_into_frame()
 	# shellcheck disable=SC2086
 	convert $STRIP_METADATA "$TMPDIR/tile_"* -append "$DESTINATION"		# -append = vertical
 	rm                      "$TMPDIR/tile_"*
+	rm "$p1" "$p2"
 
 	log "[OK] generated PETSCII-look-alike: '$DESTINATION'"
 }
