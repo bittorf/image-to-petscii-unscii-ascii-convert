@@ -531,7 +531,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 		log "using already unpacked frames 'video-images-xxxxxx.png' in dir $PWD"
 	fi
 
-	I=0; for FILE in 'video-images-'*; do I=$(( I + 1 )); done
+	I=0; for FILE in 'video-images-0'*; do I=$(( I + 1 )); done
 	log "extracted: $I images"
 
 	[ -n "$CROP" ] && {
@@ -582,9 +582,8 @@ is_video "$FILE_IN_ORIGINAL" && {
 	} done
 
 	# join all resulting images to video
-	[ -e 'out.mp4' ] && rm 'out.mp4'
-	ffmpeg -framerate 20 -pattern_type glob -i "$TMPDIR/output-*.png" -c:v libx264 -pix_fmt yuv420p 'out.mp4'
-	log "[OK] please check resulting animation: '$PWD/out.mp4'"
+	ffmpeg -framerate 20 -pattern_type glob -i "$TMPDIR/output-*.png" -c:v libx264 -pix_fmt yuv420p "$PWD/animation-${UNIQ_ID}-${CHARSET}.mp4"
+	log "[OK] please check resulting animation: '$PWD/animation-${UNIQ_ID}-${CHARSET}.mp4'"
 
 	exit 0
 }
