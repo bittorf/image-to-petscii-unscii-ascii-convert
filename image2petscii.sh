@@ -1,5 +1,12 @@
 #!/bin/sh
 
+# TODO:
+# charset-file2hex
+# - binar-ausgabe
+# - include-ausgabe: !byte $00,$01,...
+# - statistik: wieviel verschiedene genutzte chars pro frame
+# HTML-Ausgabe
+
 show_usage_and_die()
 {
 	echo
@@ -395,13 +402,12 @@ png2petscii()
 	local x=0
 	local y=1
 	local frame frame_pet file_out
-	local cache solution_dir good
+	local cache solution_dir good decimal
 	local best best_plain best_file
 
 	mkdir -p "$DIR_OUT"
 
 	for frame in "$DIR_IN/parts-"*; do {
-#		log "png2petscii() frame: $frame from $DIR_IN/parts-*"
 		[ -f "$frame" ] || continue
 
 		x=$(( x + 1 ))
@@ -412,17 +418,18 @@ png2petscii()
 
 		best=999999999
 		for frame_pet in "${PETSCII_DIR}-${CHARSET}/parts-"*; do {
-#			log "png2petscii() frame_pet: $frame_pet from ${PETSCII_DIR}-${CHARSET}/parts-*"
 			[ -f "$frame_pet" ] || continue
 
 			cache=
 			solution_dir="$DIR_IN/solutions/$x/$y"
+			# e.g. .../inputgfx-000001_3471764694/solutions/1/10/0/parts-160.png
 
 			if pattern_cached "$frame"; then		# sets var SCORE|SCORE_PLAIN|FRAME_PET_CACHED
 				cache='true'
 				best=$SCORE
 				best_plain=$SCORE_PLAIN
 				best_file="$FRAME_PET_CACHED"
+				decimal="$( basename "$frame_pet" | cut -d'-' -f2 | cut -d'.' -f1 )"
 
 				mkdir -p "$solution_dir/$best"
 				cp "$best_file" "$solution_dir/$best/"
@@ -436,6 +443,7 @@ png2petscii()
 					best=$SCORE
 					best_plain=$SCORE_PLAIN
 					best_file="$frame_pet"
+					decimal="$( basename "$frame_pet" | cut -d'-' -f2 | cut -d'.' -f1 )"
 
 					mkdir -p "$solution_dir/$best"
 					cp "$best_file" "$solution_dir/$best/"
@@ -454,7 +462,10 @@ png2petscii()
 		good='bad'
 		test "$best" -le 999999 && good='+++'
 
-		[ -e "$best_file" ] && cp "$best_file" "$file_out"
+		[ -e "$best_file" ] && {
+			cp "$best_file" "$file_out"
+			printf "%x\n" "$decimal" >"$file_out.hex"
+		}
 		log "${best_plain:-empty_best_plain} -> $best = $good x:$x y:$y = ${best_file:-empty_best_file} - $file_out IN: $frame"
 	} done
 }
@@ -603,12 +614,12 @@ join_chars_into_frame()
 	local x_tile=0
 	local dest_x=320
 	local row_starts='true'
-	local frame file p1 p2
+	local frame file p1 p2 list_hex=
 
 	p1="$TMPDIR/pic_stitched_together1-${UNIQ_ID}.png"
 	p2="$TMPDIR/pic_stitched_together2-${UNIQ_ID}.png"
 
-	for frame in "$DIR_OUT/parts-"*; do {		# append/stitch a complete x-row together
+	for frame in "$DIR_OUT/parts-"*".png"; do {	# append/stitch a complete x-row together
 		x=$(( x + 8 ))				# and start again in next row. at the end
 							# we stitch together all these rows to a picture
 		[ "$row_starts" = 'true' ] && {
@@ -616,6 +627,8 @@ join_chars_into_frame()
 			cp -v "$frame" "$p1" || return 1
 			continue
 		}
+
+		[ -e "$frame.hex" ] && list_hex="$list_hex $( cat "$frame.hex" )"
 
 		# shellcheck disable=SC2086
 		convert $STRIP_METADATA "$p1" "$frame" +append "$p2"		# horizontal: X+Y=XY
@@ -640,6 +653,7 @@ join_chars_into_frame()
 	rm "$p1" "$p2"
 	rm -fR "$DIR_OUT"
 
+	[ -n "$list_hex" ] echo "$list_hex" >"$DESTINATION.hex"
 	log "[OK] generated PETSCII-look-alike: '$DESTINATION'"
 }
 
