@@ -659,7 +659,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 				--logappend
 		) &
 
-		sleep 5
+		sleep 1
 	} done
 
 	J=0
