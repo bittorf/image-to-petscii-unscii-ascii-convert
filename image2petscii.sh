@@ -24,6 +24,7 @@ show_usage_and_die()
 	echo "		--animation_already_unpacked"
 	echo "		--myid ..."
 	echo "		--logappend"
+	echo "		--ignorecache"
 	echo "		--debug"
 	echo "		--help"
 	echo
@@ -80,6 +81,7 @@ FILE_IN='image-mono.png'				# convert gfx.jpg -resize "320x200!" -monochrome ima
 CHARSET='petscii_all'
 PETSCII_DIR='c64_petscii_chars'				# 8x8 blocks of all petscii-chars, generated from CHARACTERFILE
 
+IGNORECACHE=
 ALGO='dssim'
 CACHEFILE=
 CACHEFILE_PRE="$TMPDIR/cachefile"			# see cache_add() and pattern_cached()
@@ -115,6 +117,9 @@ while [ -n "$1" ]; do {
 		;;
 		'--debug')
 			DEBUG='true'
+		;;
+		'--ignorecache')
+			IGNORECACHE='true'
 		;;
 		'--myid')
 			case "$SWITCH_ARG1" in
@@ -384,6 +389,8 @@ pattern_cached()
 {
 	local file="$1"
 	local line chksum
+
+	[ -n "$IGNORECACHE" ] && return 1
 
 	chksum="$( sha256sum "$file" | cut -d' ' -f1 )"
 
@@ -667,7 +674,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 				--charset "$CHARSET" \
 				--tmpdir "$TMPDIR" \
 				--myid "$ID" \
-				--logappend
+				--logappend $( test -n "$IGNORECACHE" && echo '--ignorecache' )
 		) &
 
 		sleep 1
