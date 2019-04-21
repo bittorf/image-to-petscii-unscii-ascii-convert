@@ -290,7 +290,7 @@ image_into_8x8tiles()
 	# is really fast, counter starts with 000
 	# shellcheck disable=SC2086
 	convert $STRIP_METADATA "$file" -crop 8x8 parts-%03d.png || {
-		log "error $? - image_into_8x8tiles() error $? - convert $STRIP_METADATA $file -crop 8x8 parts-%03d.png" alert
+		log "image_into_8x8tiles() error $? - convert $STRIP_METADATA '$file' -crop 8x8 parts-%03d.png" alert
 		return 1
 	}
 
@@ -325,12 +325,12 @@ characterset_into_tiles()
 
 		# shellcheck disable=SC2086
 		convert $STRIP_METADATA "$charfile" "$chardir/chars.png" || {
-			log "error $? - convert $STRIP_METADATA $charfile $chardir/chars.png" alert
+			log "error $? - convert $STRIP_METADATA '$charfile' '$chardir/chars.png'" alert
 			return 1	# any2png
 		}
 
-		image_into_8x8tiles "$chardir" "chars.png" || {
-			log "error $? - image_into_8x8tiles $chardir chars.png" alert
+		image_into_8x8tiles "$chardir" 'chars.png' || {
+			log "error $? - mage_into_8x8tiles '$chardir' chars.png" alert
 			return 1
 		}
 	else
@@ -357,12 +357,12 @@ cache_add()
 	local chksum
 
 	[ -f "$file" ] || {
-		log "cache_add() not a file: $file" alert
+		log "cache_add() not a file: '$file'" alert
 		return 1
 	}
 
 	[ -f "$frame_pet" ] || {
-		log "cache_add() not a frame_pet: $frame_pet" alert
+		log "cache_add() not a frame_pet: '$frame_pet'" alert
 		return 1
 	}
 
@@ -462,7 +462,7 @@ png2petscii()
 
 	for frame in "$DIR_IN/parts-"*; do {
 		[ -f "$frame" ] || {
-			log "png2petscii() not a frame: $frame" alert
+			log "png2petscii() not a frame: '$frame'" alert
 			continue
 		}
 
@@ -476,7 +476,7 @@ png2petscii()
 		decimal=
 		for frame_pet in "${PETSCII_DIR}-${CHARSET}/parts-"*; do {
 			[ -f "$frame_pet" ] || {
-				log "png2petscii() not a frame_pet: $frame_pet" alert
+				log "png2petscii() not a frame_pet: '$frame_pet'" alert
 				continue
 			}
 
@@ -537,8 +537,14 @@ image2monochrome320x200()		# TODO: no $FILE_IN and no $DIR_IN
 	local file="$1"
 	local extension workfile
 
-	if [ -e "$file" ]; then
+	if [ -f "$file" ]; then
 		extension="$( echo "$file" | cut -d'.' -f2 )"
+		case "$extension" in
+			*.tar)
+				return 1
+			;;
+		esac
+
 		mkdir -p "$DIR_IN"
 		log "[OK] copy '$file' to '$DIR_IN/original.$extension'"
 
@@ -561,7 +567,7 @@ image2monochrome320x200()		# TODO: no $FILE_IN and no $DIR_IN
 
 	# shellcheck disable=SC2086
 	convert $STRIP_METADATA "$workfile" -resize '320x200!' -monochrome "$FILE_IN" || {
-		log "image2monochrome320x200() error $? - convert $STRIP_METADATA '$workfile' -resize '320x200!' -monochrome $FILE_IN" alert
+		log "image2monochrome320x200() error $? - convert $STRIP_METADATA '$workfile' -resize '320x200!' -monochrome '$FILE_IN'" alert
 		return 1
 	}
 
@@ -606,7 +612,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 		# convert video into frames
 		log "convert video into frames 'video-images-xxxxxx.png' in dir $PWD"
 		ffmpeg -i "$FILE_IN_ORIGINAL" "video-images-%06d.png" || {
-			log "convert-error $? - ffmpeg -i $FILE_IN_ORIGINAL 'video-images-%06d.png'" alert
+			log "convert-error $? - ffmpeg -i '$FILE_IN_ORIGINAL' 'video-images-%06d.png'" alert
 			exit 1
 		}
 	else
@@ -626,12 +632,12 @@ is_video "$FILE_IN_ORIGINAL" && {
 		# crop all images
 		for FILE in "video-images-"*; do {
 			convert "$FILE" -crop "$CROP" "$FILE.cropped.png" || {
-				log "error $? - convert $FILE -crop $CROP $FILE.cropped.png" alert
+				log "error $? - convert '$FILE' -crop '$CROP' $FILE.cropped.png" alert
 				exit 1
 			}
 
 			mv "$FILE.cropped.png" "$FILE" || {
-				log "error $? - mv $FILE.cropped.png $FILE" alert
+				log "error $? - mv '$FILE.cropped.png' '$FILE'" alert
 				exit 1
 			}
 		} done
@@ -679,7 +685,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 
 [ "$ACTION" = 'convert' ] && {
 	# cleanup	# FIXME!
-	image2monochrome320x200 "$FILE_IN_ORIGINAL"
+	image2monochrome320x200 "$FILE_IN_ORIGINAL" || exit 1
 	image_into_8x8tiles "$DIR_IN" "$FILE_IN" || exit 1
 	characterset_into_tiles "$CHARSET" || exit 1
 	png2petscii
@@ -706,7 +712,7 @@ join_chars_into_frame()
 		[ "$row_starts" = 'true' ] && {
 			row_starts='false'
 			cp -v "$frame" "$p1" || {
-				log "error $? - cp $frame $p1" alert
+				log "error $? - cp '$frame' '$p1'" alert
 				return 1
 			}
 
