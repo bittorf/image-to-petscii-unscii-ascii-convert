@@ -628,7 +628,7 @@ join_chars_into_frame()
 			continue
 		}
 
-		[ -e "$frame.hex" ] && list_hex="$list_hex $( cat "$frame.hex" )"
+		[ -f "$frame.hex" ] && list_hex="$list_hex $( cat "$frame.hex" )"
 
 		# shellcheck disable=SC2086
 		convert $STRIP_METADATA "$p1" "$frame" +append "$p2"		# horizontal: X+Y=XY
@@ -653,7 +653,7 @@ join_chars_into_frame()
 	rm "$p1" "$p2"
 	rm -fR "$DIR_OUT"
 
-	[ -n "$list_hex" ] echo "$list_hex" >"$DESTINATION.hex"
+	[ -n "$list_hex" ] && echo "$list_hex" >"$DESTINATION.hex"
 	log "[OK] generated PETSCII-look-alike: '$DESTINATION'"
 }
 
