@@ -46,8 +46,17 @@ show_usage_and_die()
 
 log()
 {
-	logger -s -- "$0: $*"
-	echo "$0: $*" >>"$LOG"
+	local message="$1"
+	local debug="$2"
+	local txt="$0: ${debug}${debug:+|}$message"
+
+	if [ "$debug" = 'debug' ]; then
+		[ -n "$DEBUG" ] && logger -s -- "$txt"
+	else
+		logger -s -- "$txt"
+	fi
+
+	echo "$txt" >>"$LOG"
 }
 
 uniq_id()		# monoton raising
@@ -336,7 +345,7 @@ cache_add()
 	local frame_pet="$4"		# full path - see png2petscii()
 	local chksum
 
-	[ -f "$file" -a -f "$frame_pet" ] || return 1
+	[ -f "$file" ] && [ -f "$frame_pet" ] || return 1
 	chksum="$( sha256sum "$file" | cut -d' ' -f1 )"		# TODO: only store 8 x 8 bit = 8 HEX-Bytes = 16 chars (not 64!)
 
 	# format:
@@ -361,7 +370,7 @@ pattern_cached()
 		export SCORE_PLAIN="$3"
 		export FRAME_PET_CACHED="$4"
 
-		log "[OK] cachehit: $FRAME_PET_CACHED"
+		log "[OK] cachehit: $FRAME_PET_CACHED" debug
 	}
 }
 
@@ -423,13 +432,14 @@ png2petscii()
 			cache=
 			solution_dir="$DIR_IN/solutions/$x/$y"
 			# e.g. .../inputgfx-000001_3471764694/solutions/1/10/0/parts-160.png
+			#                                                            ^^^ = decimal value
 
 			if pattern_cached "$frame"; then		# sets var SCORE|SCORE_PLAIN|FRAME_PET_CACHED
 				cache='true'
 				best=$SCORE
 				best_plain=$SCORE_PLAIN
 				best_file="$FRAME_PET_CACHED"
-				decimal="$( basename "$frame_pet" | cut -d'-' -f2 | cut -d'.' -f1 )"
+				decimal="$( basename "$frame_pet" | cut -d'-' -f2 | cut -d'.' -f1 )"	# e.g. 160
 
 				mkdir -p "$solution_dir/$best"
 				cp "$best_file" "$solution_dir/$best/"
@@ -449,7 +459,7 @@ png2petscii()
 					cp "$best_file" "$solution_dir/$best/"
 					cp "$frame" "$solution_dir/original.png"
 
-					log "new BEST: $best = $best_plain - see: $solution_dir/"
+					log "new BEST: $best = $best_plain - see: $solution_dir/" debug
 				}
 			fi
 		} done
@@ -466,7 +476,7 @@ png2petscii()
 			cp "$best_file" "$file_out"
 			printf "%x\n" "$decimal" >"$file_out.hex"
 		}
-		log "${best_plain:-empty_best_plain} -> $best = $good x:$x y:$y = ${best_file:-empty_best_file} - $file_out IN: $frame"
+		log "${best_plain:-empty_best_plain} -> $best = $good x:$x y:$y = ${best_file:-empty_best_file} - $file_out IN: $frame" debug
 	} done
 }
 
