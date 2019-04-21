@@ -374,6 +374,16 @@ pattern_cached()
 	}
 }
 
+strip_leading_zeros()
+{
+	echo "$1" | sed 's/^0*//'
+}
+
+dec2hex()
+{
+	printf "%x\n" "$( strip_leading_zeros "$1" )"
+}
+
 compare_pix()
 {
 	local file1="$1"
@@ -396,7 +406,7 @@ compare_pix()
 	export SCORE_PLAIN="$out"
 
 	out="${out%.*}${out#*.}"
-	out="$( printf '%s' "$out" | sed 's/^0*//' )"
+	out="$( strip_leading_zeros "$out" )"
 	export SCORE="${out:-0}"	# e.g. 20497861
 
 	# smaller = better
@@ -474,8 +484,9 @@ png2petscii()
 
 		[ -e "$best_file" ] && {
 			cp "$best_file" "$file_out"
-			printf "%x\n" "$decimal" >"$file_out.hex"
+			dec2hex "$decimal" >"$file_out.hex"
 		}
+
 		log "${best_plain:-empty_best_plain} -> $best = $good x:$x y:$y = ${best_file:-empty_best_file} - $file_out IN: $frame" debug
 	} done
 }
