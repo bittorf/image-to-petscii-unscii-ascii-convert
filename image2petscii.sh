@@ -1,7 +1,6 @@
 #!/bin/sh
 
 # TODO:
-# log ALL errors
 # charset-file2hex
 # - binar-ausgabe
 # - include-ausgabe: !byte $00,$01,...
@@ -48,7 +47,7 @@ show_usage_and_die()
 log()
 {
 	local message="$1"
-	local debug="$2"
+	local debug="$2"	# debug or 'alert'
 	local txt="$0: ${debug}${debug:+|}$message"
 
 	if [ "$debug" = 'debug' ]; then
@@ -290,7 +289,10 @@ image_into_8x8tiles()
 
 	# is really fast, counter starts with 000
 	# shellcheck disable=SC2086
-	convert $STRIP_METADATA "$file" -crop 8x8 parts-%03d.png || return 1
+	convert $STRIP_METADATA "$file" -crop 8x8 parts-%03d.png || {
+		log "error $? - image_into_8x8tiles() error $? - convert $STRIP_METADATA $file -crop 8x8 parts-%03d.png" alert
+		return 1
+	}
 
 	log "[OK] file: '$file' - $( find . -iname 'parts-*' | wc -l ) tiles 8x8 produced" debug
 	cd - >/dev/null || return 1
@@ -317,13 +319,20 @@ characterset_into_tiles()
 
 	if mkdir "$chardir" 2>/dev/null; then
 		[ -f "$charfile" ] || {
-			log "[ERROR] missing PETSCII characterfile: '$charfile'"
+			log "missing PETSCII characterfile: '$charfile'" alert
 			return 1
 		}
 
 		# shellcheck disable=SC2086
-		convert $STRIP_METADATA "$charfile" "$chardir/chars.png" || return 1	# any2png
-		image_into_8x8tiles "$chardir" "chars.png" || return 1
+		convert $STRIP_METADATA "$charfile" "$chardir/chars.png" || {
+			log "error $? - convert $STRIP_METADATA $charfile $chardir/chars.png" alert
+			return 1	# any2png
+		}
+
+		image_into_8x8tiles "$chardir" "chars.png" || {
+			log "error $? - image_into_8x8tiles $chardir chars.png" alert
+			return 1
+		}
 	else
 		# already done
 		true
@@ -347,7 +356,16 @@ cache_add()
 	local frame_pet="$4"		# full path - see png2petscii()
 	local chksum
 
-	[ -f "$file" ] && [ -f "$frame_pet" ] || return 1
+	[ -f "$file" ] || {
+		log "cache_add() not a file: $file" alert
+		return 1
+	}
+
+	[ -f "$frame_pet" ] || {
+		log "cache_add() not a frame_pet: $frame_pet" alert
+		return 1
+	}
+
 	chksum="$( sha256sum "$file" | cut -d' ' -f1 )"		# TODO: only store 8 x 8 bit = 8 HEX-Bytes = 16 chars (not 64!)
 
 	# format:
@@ -413,7 +431,7 @@ compare_pix()
 
 	# shellcheck disable=SC2046
 	explode $( dssim "$file1" "$file2" || {
-			log "[dssim:$?] - dssim '$file1' '$file2'"
+			log "[dssim:$?] - dssim '$file1' '$file2'" alert
 			echo "99.999999 $file2"
 		}
 	)
@@ -443,7 +461,10 @@ png2petscii()
 	mkdir -p "$DIR_OUT"
 
 	for frame in "$DIR_IN/parts-"*; do {
-		[ -f "$frame" ] || continue
+		[ -f "$frame" ] || {
+			log "png2petscii() not a frame: $frame" alert
+			continue
+		}
 
 		x=$(( x + 1 ))
 		[ $x -gt 40 ] && {
@@ -454,7 +475,10 @@ png2petscii()
 		best=999999999
 		decimal=
 		for frame_pet in "${PETSCII_DIR}-${CHARSET}/parts-"*; do {
-			[ -f "$frame_pet" ] || continue
+			[ -f "$frame_pet" ] || {
+				log "png2petscii() not a frame_pet: $frame_pet" alert
+				continue
+			}
 
 			cache=
 			solution_dir="$DIR_IN/solutions/$x/$y"
@@ -518,7 +542,10 @@ image2monochrome320x200()		# TODO: no $FILE_IN and no $DIR_IN
 		mkdir -p "$DIR_IN"
 		log "[OK] copy '$file' to '$DIR_IN/original.$extension'"
 
-		cp "$file" "$DIR_IN/original.$extension" || return 1
+		cp "$file" "$DIR_IN/original.$extension" || {
+			log "image2monochrome320x200() failed: cp '$file' '$DIR_IN/original.$extension'" alert
+			return 1
+		}
 
 		workfile="original.$extension"
 	else
@@ -533,7 +560,10 @@ image2monochrome320x200()		# TODO: no $FILE_IN and no $DIR_IN
 	log "[OK] converting '$workfile' with ${WIDTH}x${HEIGTH} to 320x200 monochrome" debug
 
 	# shellcheck disable=SC2086
-	convert $STRIP_METADATA "$workfile" -resize '320x200!' -monochrome "$FILE_IN" || return 1
+	convert $STRIP_METADATA "$workfile" -resize '320x200!' -monochrome "$FILE_IN" || {
+		log "image2monochrome320x200() error $? - convert $STRIP_METADATA '$workfile' -resize '320x200!' -monochrome $FILE_IN" alert
+		return 1
+	}
 
 	log "[OK] converted '$file' to '$DIR_IN/$file'" debug
 	cd - >/dev/null || return 1
@@ -575,7 +605,10 @@ is_video "$FILE_IN_ORIGINAL" && {
 	if [ -n "$UNPACK_ANIMATION" ]; then
 		# convert video into frames
 		log "convert video into frames 'video-images-xxxxxx.png' in dir $PWD"
-		ffmpeg -i "$FILE_IN_ORIGINAL" "video-images-%06d.png" || exit 1
+		ffmpeg -i "$FILE_IN_ORIGINAL" "video-images-%06d.png" || {
+			log "convert-error $? - ffmpeg -i $FILE_IN_ORIGINAL 'video-images-%06d.png'" alert
+			exit 1
+		}
 	else
 		log "using already unpacked frames 'video-images-xxxxxx.png' in dir $PWD"
 	fi
@@ -592,8 +625,15 @@ is_video "$FILE_IN_ORIGINAL" && {
 
 		# crop all images
 		for FILE in "video-images-"*; do {
-			convert "$FILE" -crop "$CROP" "$FILE.cropped.png" || exit 1
-			mv "$FILE.cropped.png" "$FILE" || exit 1
+			convert "$FILE" -crop "$CROP" "$FILE.cropped.png" || {
+				log "error $? - convert $FILE -crop $CROP $FILE.cropped.png" alert
+				exit 1
+			}
+
+			mv "$FILE.cropped.png" "$FILE" || {
+				log "error $? - mv $FILE.cropped.png $FILE" alert
+				exit 1
+			}
 		} done
 
 		# join all images to video
@@ -665,7 +705,11 @@ join_chars_into_frame()
 
 		[ "$row_starts" = 'true' ] && {
 			row_starts='false'
-			cp -v "$frame" "$p1" || return 1
+			cp -v "$frame" "$p1" || {
+				log "error $? - cp $frame $p1" alert
+				return 1
+			}
+
 			continue
 		}
 
