@@ -355,7 +355,7 @@ get_image_resolution()
 	export WIDTH=$WIDTH
 	export HEIGTH=$HEIGTH
 
-	isnumber "$WIDTH"
+	test "$WIDTH" -eq "$WIDTH"
 }
 
 cache_add()
