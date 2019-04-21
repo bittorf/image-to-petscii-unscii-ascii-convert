@@ -380,7 +380,10 @@ pattern_cached()
 
 strip_leading_zeros()
 {
-	echo "$1" | sed 's/^0*//'
+	local out
+
+	out="$( echo "$1" | sed 's/^0*//' )"
+	echo "${{out:-0}"
 }
 
 dec2hex()
