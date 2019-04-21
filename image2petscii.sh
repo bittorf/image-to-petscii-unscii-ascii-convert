@@ -1,6 +1,7 @@
 #!/bin/sh
 
 # TODO:
+# log ALL errors
 # charset-file2hex
 # - binar-ausgabe
 # - include-ausgabe: !byte $00,$01,...
@@ -287,13 +288,13 @@ image_into_8x8tiles()
 
 	mkdir -p "$dir"
 	cd "$dir" || return 1
-	log "[OK] file: '$file' - will crop into 8x8 tiles in '$dir'"
+	log "[OK] file: '$file' - will crop into 8x8 tiles in '$dir'" debug
 
 	# is really fast, counter starts with 000
 	# shellcheck disable=SC2086
 	convert $STRIP_METADATA "$file" -crop 8x8 parts-%03d.png || return 1
 
-	log "[OK] file: '$file' - $( find . -iname 'parts-*' | wc -l ) tiles 8x8 produced"
+	log "[OK] file: '$file' - $( find . -iname 'parts-*' | wc -l ) tiles 8x8 produced" debug
 	cd - >/dev/null || return 1
 }
 
@@ -527,12 +528,12 @@ image2monochrome320x200()		# TODO: no $FILE_IN and no $DIR_IN
 	cd "$DIR_IN" || return 1
 
 	get_image_resolution "$workfile"
-	log "[OK] converting '$workfile' with ${WIDTH}x${HEIGTH} to 320x200 monochrome"
+	log "[OK] converting '$workfile' with ${WIDTH}x${HEIGTH} to 320x200 monochrome" debug
 
 	# shellcheck disable=SC2086
 	convert $STRIP_METADATA "$workfile" -resize '320x200!' -monochrome "$FILE_IN" || return 1
 
-	log "[OK] converted '$file' to '$DIR_IN/$file'"
+	log "[OK] converted '$file' to '$DIR_IN/$file'" debug
 	cd - >/dev/null || return 1
 }
 
@@ -693,7 +694,7 @@ join_chars_into_frame()
 		hex2bin "00 20 $list_hex" >"$DESTINATION.hex.bin"
 	}
 
-	log "[OK] generated PETSCII-look-alike: '$DESTINATION'"
+	log "[OK] generated PETSCII-look-alike-files: '$DESTINATION'*"
 }
 
 join_chars_into_frame
