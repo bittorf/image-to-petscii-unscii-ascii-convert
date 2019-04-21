@@ -468,7 +468,7 @@ png2petscii()
 				best_plain=$SCORE_PLAIN
 				best_file="$FRAME_PET_CACHED"
 				decimal="$( basename "$frame_pet" | cut -d'-' -f2 | cut -d'.' -f1 )"	# e.g. 160
-
+log "DEBUG-A: frame_pet: $frame_pet decimal: $decimal"
 				mkdir -p "$solution_dir/$best"
 				cp "$best_file" "$solution_dir/$best/"
 				cp "$frame" "$solution_dir/original.png"
@@ -482,6 +482,7 @@ png2petscii()
 					best_plain=$SCORE_PLAIN
 					best_file="$frame_pet"
 					decimal="$( basename "$frame_pet" | cut -d'-' -f2 | cut -d'.' -f1 )"
+log "DEBUG-B: frame_pet: $frame_pet decimal: $decimal"
 
 					mkdir -p "$solution_dir/$best"
 					cp "$best_file" "$solution_dir/$best/"
@@ -499,6 +500,8 @@ png2petscii()
 
 		good='bad'
 		test "$best" -le 999999 && good='+++'
+
+		log "DEBUG-C: frame_pet: $frame_pet decimal: $decimal"
 
 		[ -e "$best_file" ] && {
 			cp "$best_file" "$file_out"
@@ -607,7 +610,7 @@ is_video "$FILE_IN_ORIGINAL" && {
 	# call outself for each file
 	for FILE in 'video-images-'*; do {
 		ID="$( echo "$FILE" | cut -d'-' -f3 | cut -d'.' -f1 )"	# e.g. 000123
-		while ! cpu_load_acceptable; do log "no more forks: $( uptime )"; sleep 30; done
+		while ! cpu_load_acceptable; do log "no more forks:$( uptime )"; sleep 30; done
 
 		(
 			$0	--action "$ACTION" \
@@ -661,6 +664,7 @@ join_chars_into_frame()
 	for frame in "$DIR_OUT/parts-"*".png"; do {	# append/stitch a complete x-row together
 		x=$(( x + 8 ))				# and start again in next row. at the end
 							# we stitch together all these rows to a picture
+		# written during png2petscii()
 		[ -f "$frame.hex" ] && list_hex="$list_hex $( cat "$frame.hex" )"
 
 		[ "$row_starts" = 'true' ] && {
