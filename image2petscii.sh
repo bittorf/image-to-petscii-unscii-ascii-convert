@@ -700,7 +700,8 @@ join_chars_into_frame()
 	log "[OK] generated PETSCII-look-alike-files: '$DESTINATION'*"
 }
 
-join_chars_into_frame
+( join_chars_into_frame ) &
+PID=$!
 
-log "[OK] see logfile: '$LOG'"
+log "[OK] see logfile: '$LOG' - PID: $PID"
 true
