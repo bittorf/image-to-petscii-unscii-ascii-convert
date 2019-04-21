@@ -264,9 +264,7 @@ check_deps()
 
 	for app in dssim convert identify ffmpeg; do {
 		if path="$( command -v "$app" )"; then
-			# log "[OK] $app: using '$path'"
-			echo "$path" >/dev/null			# shellcheck
-			:
+			log "[OK] $app: using '$path'" debug
 		else
 			case "$app" in
 				dssim) url="https://github.com/kornelski/dssim" ;;
