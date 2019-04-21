@@ -466,7 +466,7 @@ png2petscii()
 				best=$SCORE
 				best_plain=$SCORE_PLAIN
 				best_file="$FRAME_PET_CACHED"
-				decimal="$( basename "$frame_pet" | cut -d'-' -f2 | cut -d'.' -f1 )"	# e.g. 160
+				decimal="$( basename "$best_file" | cut -d'-' -f2 | cut -d'.' -f1 )"	# e.g. 160
 
 				mkdir -p "$solution_dir/$best"
 				cp "$best_file" "$solution_dir/$best/"
