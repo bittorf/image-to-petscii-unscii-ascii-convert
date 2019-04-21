@@ -341,11 +341,16 @@ characterset_into_tiles()
 
 get_image_resolution()
 {
+	WIDTH=
+	HEIGTH=
+
 	# shellcheck disable=SC2046
 	eval $( identify -format "WIDTH=%[fx:w]; HEIGTH=%[fx:h];\n" "$1" )
 
 	export WIDTH=$WIDTH
 	export HEIGTH=$HEIGTH
+
+	isnumber "$WIDTH"
 }
 
 cache_add()
@@ -562,7 +567,7 @@ image2monochrome320x200()		# TODO: no $FILE_IN and no $DIR_IN
 
 	cd "$DIR_IN" || return 1
 
-	get_image_resolution "$workfile"
+	get_image_resolution "$workfile" || return 1
 	log "[OK] converting '$workfile' with ${WIDTH}x${HEIGTH} to 320x200 monochrome" debug
 
 	# shellcheck disable=SC2086
