@@ -260,9 +260,11 @@ check_deps()
 	local path app url
 
 	# TODO: butteraugli
+
 	for app in dssim convert identify ffmpeg; do {
 		if path="$( command -v "$app" )"; then
 			# log "[OK] $app: using '$path'"
+			echo "$path" >/dev/null			# shellcheck
 			:
 		else
 			case "$app" in
@@ -383,6 +385,17 @@ strip_leading_zeros()
 dec2hex()
 {
 	printf "%x\n" "$( strip_leading_zeros "$1" )"
+}
+
+hex2bin()
+{
+	local list_hex="$1"
+	local hex octal
+
+	for hex in $list_hex; do {
+		octal="$( printf "%o" "0x$hex" )"
+		eval printf "\\\\$octal"
+	} done
 }
 
 compare_pix()
@@ -675,7 +688,11 @@ join_chars_into_frame()
 	rm "$p1" "$p2"
 	rm -fR "$DIR_OUT"
 
-	[ -n "$list_hex" ] && echo "$list_hex" >"$DESTINATION.hex"
+	[ -n "$list_hex" ] && {
+		echo          "$list_hex" >"$DESTINATION.hex"
+		hex2bin "00 20 $list_hex" >"$DESTINATION.hex.bin"
+	}
+
 	log "[OK] generated PETSCII-look-alike: '$DESTINATION'"
 }
 
