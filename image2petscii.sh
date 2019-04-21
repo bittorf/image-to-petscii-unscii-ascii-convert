@@ -262,7 +262,8 @@ check_deps()
 	# TODO: butteraugli
 	for app in dssim convert identify ffmpeg; do {
 		if path="$( command -v "$app" )"; then
-			log "[OK] $app: using '$path'"
+			# log "[OK] $app: using '$path'"
+			:
 		else
 			case "$app" in
 				dssim) url="https://github.com/kornelski/dssim" ;;
@@ -643,13 +644,13 @@ join_chars_into_frame()
 	for frame in "$DIR_OUT/parts-"*".png"; do {	# append/stitch a complete x-row together
 		x=$(( x + 8 ))				# and start again in next row. at the end
 							# we stitch together all these rows to a picture
+		[ -f "$frame.hex" ] && list_hex="$list_hex $( cat "$frame.hex" )"
+
 		[ "$row_starts" = 'true' ] && {
 			row_starts='false'
 			cp -v "$frame" "$p1" || return 1
 			continue
 		}
-
-		[ -f "$frame.hex" ] && list_hex="$list_hex $( cat "$frame.hex" )"
 
 		# shellcheck disable=SC2086
 		convert $STRIP_METADATA "$p1" "$frame" +append "$p2"		# horizontal: X+Y=XY
