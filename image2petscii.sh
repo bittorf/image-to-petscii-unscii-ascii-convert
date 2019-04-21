@@ -454,6 +454,7 @@ png2petscii()
 		}
 
 		best=999999999
+		decimal=
 		for frame_pet in "${PETSCII_DIR}-${CHARSET}/parts-"*; do {
 			[ -f "$frame_pet" ] || continue
 
@@ -468,7 +469,7 @@ png2petscii()
 				best_plain=$SCORE_PLAIN
 				best_file="$FRAME_PET_CACHED"
 				decimal="$( basename "$frame_pet" | cut -d'-' -f2 | cut -d'.' -f1 )"	# e.g. 160
-log "DEBUG-A: frame_pet: $frame_pet decimal: $decimal"
+
 				mkdir -p "$solution_dir/$best"
 				cp "$best_file" "$solution_dir/$best/"
 				cp "$frame" "$solution_dir/original.png"
@@ -482,13 +483,12 @@ log "DEBUG-A: frame_pet: $frame_pet decimal: $decimal"
 					best_plain=$SCORE_PLAIN
 					best_file="$frame_pet"
 					decimal="$( basename "$frame_pet" | cut -d'-' -f2 | cut -d'.' -f1 )"
-log "DEBUG-B: frame_pet: $frame_pet decimal: $decimal"
 
 					mkdir -p "$solution_dir/$best"
 					cp "$best_file" "$solution_dir/$best/"
 					cp "$frame" "$solution_dir/original.png"
 
-					log "new BEST: $best = $best_plain - see: $solution_dir/" debug
+					log "new BEST: $best = $best_plain - see: $solution_dir/ - frame_pet: $frame_pet decimal: $decimal"
 				}
 			fi
 		} done
@@ -500,8 +500,6 @@ log "DEBUG-B: frame_pet: $frame_pet decimal: $decimal"
 
 		good='bad'
 		test "$best" -le 999999 && good='+++'
-
-		log "DEBUG-C: frame_pet: $frame_pet decimal: $decimal"
 
 		[ -e "$best_file" ] && {
 			cp "$best_file" "$file_out"
