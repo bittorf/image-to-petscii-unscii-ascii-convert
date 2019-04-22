@@ -1,11 +1,11 @@
 #!/bin/sh
 
 # TODO:
-# charset-file2hex
-# - binar-ausgabe
-# - include-ausgabe: !byte $00,$01,...
-# - statistik: wieviel verschiedene genutzte chars pro frame
-# HTML-Ausgabe
+# - stats
+#   - wieviel verschiedene genutzte chars pro frame
+#   - wieviel gesamtpunkte (ähnlichkeit) pro frame
+# - HTML-Ausgabe mit jeder entscheidung
+# add charset 'dirart'
 
 show_usage_and_die()
 {
@@ -75,7 +75,7 @@ TMPDIR='/home/bastian/ledebot'
 [ -d "$TMPDIR" ] || TMPDIR='/run/shm'
 LOG="$TMPDIR/log.txt"
 
-MYID=
+MYID="id$$"
 FILE_IN='image-mono.png'				# convert gfx.jpg -resize "320x200!" -monochrome image-mono.png
 
 CHARSET='petscii_all'
