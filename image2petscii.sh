@@ -701,7 +701,8 @@ is_video "$FILE_IN_ORIGINAL" && {
 
 	(
 		cd "$TMPDIR" || exit 1
-		tar cvzf output.tar.gz output-*
+		cat *'.hex.plain.bin' >'output-all.hex.plain.bin'
+		tar cvzf 'output.tar.gz' 'output-'*
 	)
 
 	exit 0
