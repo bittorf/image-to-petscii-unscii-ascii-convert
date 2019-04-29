@@ -701,8 +701,13 @@ is_video "$FILE_IN_ORIGINAL" && {
 
 	(
 		cd "$TMPDIR" || exit 1
-		cat *'.hex.plain.bin' >'output-all.hex.plain.bin'
-		tar cvzf 'output.tar.gz' 'output-'*
+
+		cat *'.hex.plain.bin' >"output-anim-${ANIM}-all.hex.plain.bin"
+		gzip -9 "output-anim-${ANIM}-all.hex.plain.bin"			# now .gz appended
+
+		cat *'.hex.plain.bin' >"output-anim-${ANIM}-all.hex.plain.bin"
+
+		tar czf "output-anim-${ANIM}-${CHARSET}.tar.gz" 'output-'* "animation-${UNIQ_ID}-${CHARSET}.mp4"
 	)
 
 	exit 0
