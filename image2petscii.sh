@@ -661,7 +661,11 @@ is_video "$FILE_IN_ORIGINAL" && {
 		read -r NOP && echo "$NOP"
 	}
 
-	[ $I -gt 0 ] && TMPDIR="$TMPDIR/animation-$ID" && mkdir -p "$TMPDIR"
+	[ $I -gt 0 ] && {
+		ANIM=1
+		while [ -d "$TMPDIR/animation-$ANIM" ]; do ANIM=$(( ANIM + 1 )); done
+		TMPDIR="$TMPDIR/animation-$ANIM" && mkdir "$TMPDIR"
+	}
 
 	# call outself for each file
 	for FILE in 'video-images-'*; do {
