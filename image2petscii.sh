@@ -699,6 +699,11 @@ is_video "$FILE_IN_ORIGINAL" && {
 	mv "animation-${UNIQ_ID}-${CHARSET}.mp4" "$TMPDIR"
 	log "[OK] please check resulting animation: '$TMPDIR/animation-${UNIQ_ID}-${CHARSET}.mp4'"
 
+	(
+		cd "$TMPDIR" || exit 1
+		tar cvzf output.tar.gz output-*
+	)
+
 	exit 0
 }
 
