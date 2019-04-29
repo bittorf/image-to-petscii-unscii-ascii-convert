@@ -763,6 +763,7 @@ join_chars_into_frame()
 
 	[ -n "$list_hex" ] && {
 		echo          "$list_hex" >"$DESTINATION.hex"
+		hex2bin       "$list_hex" >"$DESTINATION.hex.plain.bin"
 		hex2bin "00 20 $list_hex" >"$DESTINATION.hex.bin"
 	}
 
