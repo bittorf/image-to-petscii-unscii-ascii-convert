@@ -696,7 +696,8 @@ is_video "$FILE_IN_ORIGINAL" && {
 
 	# join all resulting images to video
 	ffmpeg -framerate 20 -pattern_type glob -i "$TMPDIR/output-*.png" -c:v libx264 -pix_fmt yuv420p "$PWD/animation-${UNIQ_ID}-${CHARSET}.mp4"
-	log "[OK] please check resulting animation: '$PWD/animation-${UNIQ_ID}-${CHARSET}.mp4'"
+	mv "animation-${UNIQ_ID}-${CHARSET}.mp4" "$TMPDIR"
+	log "[OK] please check resulting animation: '$TMPDIR/animation-${UNIQ_ID}-${CHARSET}.mp4'"
 
 	exit 0
 }
