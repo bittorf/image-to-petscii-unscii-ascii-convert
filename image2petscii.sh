@@ -661,6 +661,8 @@ is_video "$FILE_IN_ORIGINAL" && {
 		read -r NOP && echo "$NOP"
 	}
 
+	[ $I -gt 0 ] && TMPDIR="$TMPDIR/animation-$ID" && mkdir -p "$TMPDIR"
+
 	# call outself for each file
 	for FILE in 'video-images-'*; do {
 		ID="$( echo "$FILE" | cut -d'-' -f3 | cut -d'.' -f1 )"	# e.g. 000123
